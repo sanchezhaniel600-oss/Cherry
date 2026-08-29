@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ECORUTA</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<style>
+:root{
+  --green:#3fae29;
+  --green-dark:#2e8e1f;
+  --green-light:#eaf7e6;
+  --orange:#f5a623;
+  --purple:#8b5cf6;
+  --red:#e53935;
+  --amber:#fb8c00;
+  --bg:#eef1ee;
+  --card:#ffffff;
+  --text:#1d1d1d;
+  --text-soft:#7d7d7d;
+  --border:#e7e9e6;
+  --radius:18px;
+  --shadow:0 2px 14px rgba(20,30,20,0.07);
+  --topbar-height:82px;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased;}
+button{font-family:inherit; cursor:pointer; border:none; background:none;}
+input, textarea, select{font-family:inherit;}
+img{max-width:100%; display:block;}
+a{color:inherit; text-decoration:none;}
+.hidden{display:none !important;}
+
+/* ---------- TOP BAR ---------- */
+.topbar{
+  display:flex; align-items:center; gap:18px;
+  background:var(--card); padding:10px 18px 12px;
+  box-shadow:0 2px 10px rgba(30,30,30,0.05);
+  position:sticky; top:0; z-index:1000;
+  flex-wrap:nowrap;
+  border-bottom:1px solid rgba(0,0,0,0.03);
+}
+.logo-wrap{display:flex; align-items:center; gap:10px; flex-shrink:0; padding-left:4px;}
+.logo-wrap svg{width:46px; height:46px;}
+.logo-text{display:none; font-weight:900; font-size:18px; color:#2d6f23; letter-spacing:0.4px;}
+.search-box{
+  display:flex; align-items:center; gap:8px;
+  background:#eff0ef; border-radius:22px; padding:9px 16px;
+  flex:0 0 240px; min-width:150px;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,0.02);
+}
+.search-box input{background:none; border:none; outline:none; width:100%; font-size:14px; color:#444;}
+.search-box svg{flex-shrink:0; color:#8a8a8a;}
+.navlinks{display:flex; gap:26px; flex:1; justify-content:center; align-items:flex-end; min-width:0;}
+.navlink{
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  font-size:12.5px; color:#7f817f; font-weight:700; padding:4px 2px 6px;
+  border-bottom:3px solid transparent; min-width:48px;
+}
+.navlink svg{width:22px; height:22px; opacity:0.9;}
+.navlink.active{color:var(--green); border-color:var(--green);}
+.navlink.active svg{color:var(--green);}
+.navlink:not(.active):hover{color:#555;}
+.bell-wrap{position:relative; flex-shrink:0; cursor:pointer; padding:4px 0;}
+.bell-wrap svg{width:25px; height:25px; color:#2a2a2a;}
+.bell-badge{
+  position:absolute; top:-6px; right:-8px; background:var(--red); color:#fff;
+  font-size:10.5px; font-weight:700; border-radius:50%; min-width:17px; height:17px;
+  display:flex; align-items:center; justify-content:center; padding:0 3px; border:2px solid #fff;
+}
+.user-wrap{display:flex; align-items:center; gap:10px; flex-shrink:0; cursor:pointer;}
+.user-text{text-align:right; display:none;}
+.user-text .hello{font-weight:900; font-size:12px; color:var(--text); letter-spacing:0.2px;}
+.user-text .sub{font-size:11px; color:#666; line-height:1.35; max-width:220px;}
+.avatar-round{width:46px; height:46px; border-radius:50%; object-fit:cover; border:2px solid var(--green);}
+.avatar-round.sm{width:32px; height:32px;}
+.avatar-round.xs{width:26px; height:26px;}
+.avatar-initial{
+  display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800;
+  border:2px solid var(--green); flex-shrink:0;
+}
+.avatar-initial.avatar-round{font-size:18px;}
+.avatar-initial.sm{font-size:13px;}
+.avatar-initial.xs{font-size:10.5px;}
+
+@media(min-width:760px){
+  .logo-text{display:block;}
+  .search-box{flex:0 0 260px;}
+  .user-text{display:block;}
+}
+
+/* Notification dropdown */
+.dropdown{
+  position:absolute; top:64px; right:20px; width:320px; background:var(--card);
+  border-radius:16px; box-shadow:0 8px 30px rgba(0,0,0,0.18); z-index:2000; overflow:hidden;
+}
+.dropdown h4{padding:14px 16px; border-bottom:1px solid var(--border); font-size:15px;}
+.notif-item{padding:12px 16px; border-bottom:1px solid var(--border); font-size:13px; display:flex; gap:10px;}
+.notif-item:last-child{border-bottom:none;}
+.notif-item.unread{background:var(--green-light);}
+.notif-dot{width:8px; height:8px; border-radius:50%; background:var(--green); margin-top:5px; flex-shrink:0;}
+.notif-item .t{color:var(--text-soft); font-size:11px; margin-top:2px;}
+
+/* ---------- LAYOUT ---------- */
+.container{max-width:100%; margin:0 auto; padding:0; height:calc(100dvh - var(--topbar-height)); overflow:hidden;}
+.view{display:none;}
+.view.active{display:block; height:100%;}
+.view:not(#view-inicio){overflow-y:auto; padding:24px 28px;}
+
+.home-grid{
+  display:block; height:100%;
+}
+.feed-panel{display:block;}
+#postsCol{
+  width:min(100%, 560px);
+  height:100%;
+  margin:0 auto;
+  overflow-y:auto;
+  padding:0;
+  background:#f2f2f2;
+  scroll-snap-type:y mandatory;
+  overscroll-behavior-y:contain;
+}
+#postsCol > .card{scroll-snap-align:start;}
+#postsCol{scrollbar-width:none;}
+#postsCol::-webkit-scrollbar{display:none;}
+#commentsCol,
+#view-inicio .home-grid > div:nth-child(2),
+#view-inicio .bottom-bar{
+  display:none !important;
+}
+@media(min-width:1000px){
+  #view-inicio{display:grid; grid-template-rows:minmax(0,1fr) auto; gap:16px; padding:12px 18px 16px; overflow:hidden;}
+  .home-grid{display:grid; grid-template-columns:minmax(560px,1.04fr) minmax(420px,.96fr); gap:18px; min-height:0;}
+  .feed-panel{display:grid; grid-template-columns:minmax(0,1fr) 260px; gap:12px; min-width:0; min-height:0;}
+  #postsCol{width:auto; height:100%; overflow-y:auto; scroll-snap-type:none; background:transparent;}
+  #postsCol > .card{scroll-snap-align:none;}
+  #commentsCol{display:block !important; min-width:0; min-height:0; overflow:hidden;}
+  .comments-card{height:100%; max-height:none !important; min-height:0; overflow:hidden;}
+  .comments-list{min-height:0; overflow-y:auto; scrollbar-width:none;}
+  .comments-list::-webkit-scrollbar{display:none;}
+  #view-inicio .home-grid > div:nth-child(2){display:block !important; min-width:0; min-height:0;}
+  #view-inicio .home-grid > div:nth-child(3){display:block !important; min-width:0; min-height:0;}
+  #view-inicio .map-card{height:100%;}
+  #view-inicio .map-card .leaflet-container{height:100%; min-height:420px;}
+  #view-inicio .bottom-bar{display:flex !important; margin-top:0; min-height:92px;}
+}
+
+/* ---------- POST CARD ---------- */
+.card{
+  background:var(--card); border-radius:0; box-shadow:none; padding:0; margin:0; border:none; position:relative; height:100%; min-height:100%; background:#000; color:#fff; overflow:hidden;
+}
+.post-head{
+  position:absolute; top:12px; left:12px; right:12px; z-index:3; display:flex; justify-content:space-between; align-items:flex-start; gap:10px;
+  background:linear-gradient(to bottom, rgba(0,0,0,.5), rgba(0,0,0,0)); padding:6px 0; border-radius:10px;
+}
+.post-user{display:flex; gap:10px; align-items:center;}
+.post-user .pname{font-weight:800; font-size:15px; color:#fff;}
+.post-user .pmeta{font-size:12px; color:rgba(255,255,255,.92);}
+.avatar-dotwrap{position:relative;}
+.online-dot{position:absolute; bottom:0; right:0; width:10px; height:10px; border-radius:50%; background:var(--green); border:2px solid #fff;}
+.menu-dots{font-size:20px; color:#fff; padding:4px 8px; border-radius:50%; background:rgba(0,0,0,.18);}
+.menu-dots:hover{background:rgba(0,0,0,.28);}
+.meeting-box{text-align:left; font-size:11px; color:#fff; line-height:1.5; font-weight:700; background:rgba(0,0,0,.16); padding:8px 10px; border-radius:10px; max-width:220px;}
+.meeting-box .ver-mapa{color:#fff; font-weight:800; cursor:pointer; text-decoration:underline;}
+.post-desc{
+  position:absolute; left:12px; right:74px; bottom:86px; z-index:3; margin:0; font-size:14px; line-height:1.4; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.7);
+}
+.post-photo{border-radius:0; overflow:hidden; margin-bottom:0; background:#222; height:100%;}
+.post-photo img{width:100%; height:100%; max-height:none; object-fit:cover; display:block; filter:brightness(.9) saturate(.9);}
+.post-actions{
+  position:absolute; right:12px; bottom:94px; z-index:3; display:flex; flex-direction:column; align-items:center; gap:14px; padding:0;
+}
+.action-btn{display:flex; flex-direction:column; align-items:center; gap:6px; font-size:12px; color:#fff; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,.7);}
+.action-btn svg{width:22px; height:22px;}
+.action-btn.liked{color:#ff5d5d;}
+.action-btn.liked svg{fill:#ff5d5d; color:#ff5d5d;}
+.join-row{
+  position:absolute; left:12px; right:12px; bottom:12px; z-index:3; display:flex; align-items:center; justify-content:flex-start; gap:10px; margin-top:0;
+}
+.btn-join{
+  flex:0 0 auto; background:rgba(255,255,255,.92); color:#111; font-weight:800; font-size:13px; padding:10px 16px; border-radius:999px; box-shadow:none;
+}
+.btn-join.joined{background:rgba(255,255,255,.74);}
+.stack-avatars{display:flex; align-items:center;}
+.stack-avatars img, .stack-avatars .stack-initial{width:28px; height:28px; border-radius:50%; border:2px solid rgba(255,255,255,.7); margin-left:-10px; object-fit:cover; flex-shrink:0;}
+.stack-avatars img:first-child, .stack-avatars .stack-initial:first-child{margin-left:0;}
+.stack-initial{display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:11px;}
+.stack-count{font-size:12px; color:#fff; margin-left:6px; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,.7);}
+
+@media(min-width:1000px){
+  .card{height:auto; min-height:0; background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:16px; color:var(--text); overflow:hidden; margin-bottom:16px;}
+  .post-head{position:relative; top:auto; left:auto; right:auto; padding:0 0 10px; background:none; color:var(--text);}
+  .post-user .pname{color:var(--text);}
+  .post-user .pmeta{color:var(--text-soft);}
+  .meeting-box{color:var(--text); background:none; padding:0; max-width:240px;}
+  .meeting-box .ver-mapa{color:var(--green-dark);}
+  .menu-dots{color:var(--text); background:none;}
+  .post-desc{position:relative; left:auto; right:auto; bottom:auto; margin:8px 0 14px; color:var(--text); text-shadow:none;}
+  .post-photo{height:300px; border-radius:18px;}
+  .post-actions{position:relative; right:auto; bottom:auto; flex-direction:row; justify-content:space-between; gap:18px; padding:12px 6px 4px; color:var(--text); text-shadow:none;}
+  .action-btn{flex-direction:row; color:var(--text); text-shadow:none;}
+  .action-btn.liked{color:var(--red);}
+  .join-row{position:relative; left:auto; right:auto; bottom:auto; padding-top:8px;}
+  .btn-join{background:var(--green); color:#fff; box-shadow:none; min-width:190px; text-align:center;}
+  .btn-join.joined{background:var(--green);}
+  .stack-count{color:var(--text); text-shadow:none;}
+}
+
+/* ---------- COMMENTS ---------- */
+.comments-card{background:var(--card); border-radius:18px; box-shadow:0 2px 10px rgba(0,0,0,0.04); display:flex; flex-direction:column; max-height:640px; border:1px solid rgba(0,0,0,0.02);}
+.comments-head{padding:14px 18px 12px; font-weight:900; font-size:16px; border-bottom:1px solid var(--border);}
+.comments-list{overflow-y:auto; padding:14px 18px; flex:1;}
+.comment{margin-bottom:16px;}
+.comment-row{display:flex; gap:10px;}
+.comment-body{flex:1;}
+.comment-name{font-weight:700; font-size:13.5px;}
+.comment-time{font-size:11px; color:var(--text-soft); margin-left:4px; font-weight:400;}
+.comment-text{font-size:13.5px; margin-top:2px; line-height:1.35;}
+.comment-foot{display:flex; gap:16px; margin-top:4px; font-size:12px; color:var(--text-soft); font-weight:600;}
+.comment-foot span{cursor:pointer;}
+.comment-foot span:hover{color:var(--green);}
+.reply-list{margin-left:38px; margin-top:10px;}
+.reply-input-row{display:flex; gap:8px; margin-left:38px; margin-top:8px;}
+.reply-input-row input{flex:1; border:1px solid var(--border); border-radius:10px; padding:6px 10px; font-size:12.5px;}
+.comment-input-bar{display:flex; align-items:center; gap:10px; padding:14px 16px; border-top:1px solid var(--border);}
+.comment-input-bar input{flex:1; border:1px solid var(--border); background:#f6f7f5; border-radius:20px; padding:10px 16px; font-size:13.5px; outline:none;}
+.send-btn{width:38px; height:38px; border-radius:50%; background:var(--green); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+.send-btn:hover{background:var(--green-dark);}
+
+/* ---------- MAP CARD ---------- */
+.map-card{background:var(--card); border-radius:18px; box-shadow:0 2px 10px rgba(0,0,0,0.04); overflow:hidden; position:relative; border:1px solid rgba(0,0,0,0.02);}
+.map-card .leaflet-container{height:420px; width:100%; border-radius:18px;}
+.map-legend{
+  position:absolute; top:14px; left:14px; z-index:500;
+  background:rgba(232,245,229,0.95); border-radius:14px; padding:12px 14px;
+  box-shadow:0 2px 10px rgba(0,0,0,0.12); font-size:12.5px; max-width:230px;
+}
+.map-legend .lg-row{display:flex; align-items:center; gap:8px; margin-bottom:6px; font-weight:600;}
+.map-legend .dot{width:11px; height:11px; border-radius:50%; flex-shrink:0;}
+.map-legend .dot.red{background:var(--red);}
+.map-legend .dot.orange{background:var(--amber);}
+.map-legend .dot.green{background:var(--green);}
+.map-legend .lg-foot{display:flex; align-items:center; gap:8px; margin-top:8px; padding-top:8px; border-top:1px solid rgba(0,0,0,0.08);}
+.map-legend .lg-foot .trash-ic{width:26px; height:26px; border-radius:50%; background:#666; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+.map-legend .lg-foot .trash-ic svg{width:14px; height:14px; color:#fff;}
+.map-legend .lg-foot .txt{font-size:10.5px; color:#444; line-height:1.25;}
+.locate-btn{
+  position:absolute; bottom:14px; right:14px; z-index:500; background:#fff;
+  border-radius:24px; padding:9px 14px; font-size:12.5px; font-weight:700;
+  box-shadow:0 2px 10px rgba(0,0,0,0.18); display:flex; align-items:center; gap:6px;
+}
+.locate-btn:hover{background:#f2f2f2;}
+.map-status{position:absolute; bottom:14px; left:14px; z-index:500; background:#fff; border-radius:10px; padding:6px 10px; font-size:11px; box-shadow:0 2px 8px rgba(0,0,0,0.15); display:none;}
+
+/* ---------- BOTTOM BAR ---------- */
+.bottom-bar{
+  margin-top:16px; background:linear-gradient(90deg,var(--green) 0%, var(--green-dark) 100%);
+  border-radius:20px; display:flex; align-items:stretch; overflow:hidden; box-shadow:0 8px 18px rgba(30,100,30,0.12);
+  flex-wrap:wrap;
+}
+.bb-item{display:flex; align-items:center; gap:10px; padding:16px 20px; color:#fff; flex:1; min-width:150px; border-right:1px solid rgba(255,255,255,0.25);}
+.bb-item:last-child{border-right:none;}
+.bb-icon{width:42px; height:42px; border-radius:12px; background:rgba(255,255,255,0.18); display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+.bb-icon svg{width:22px; height:22px;}
+.bb-title{font-weight:800; font-size:15px;}
+.bb-sub{font-size:10.5px; opacity:0.95; line-height:1.2;}
+.bb-item.reportar{justify-content:center; font-weight:900; font-size:24px; letter-spacing:1px; flex:1.3; gap:14px;}
+.bb-item.reportar .cam-circ{width:46px; height:46px; border-radius:50%; background:rgba(255,255,255,0.22); display:flex; align-items:center; justify-content:center;}
+.bb-item{cursor:pointer;}
+.bb-item:hover{background:rgba(255,255,255,0.08);}
+
+/* ---------- GENERIC SECTION HEADER ---------- */
+.section-title{font-size:22px; font-weight:800; margin-bottom:14px; display:flex; align-items:center; justify-content:space-between;}
+.section-title .add-btn{background:var(--green); color:#fff; font-size:13px; font-weight:700; padding:9px 16px; border-radius:10px;}
+
+/* ---------- REPORTS LIST ---------- */
+.reports-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px;}
+.report-card{background:var(--card); border-radius:16px; box-shadow:var(--shadow); overflow:hidden;}
+.report-card img{width:100%; height:150px; object-fit:cover;}
+.report-body{padding:14px;}
+.status-pill{display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:800; padding:4px 10px; border-radius:20px; margin-bottom:8px;}
+.status-pill.reportado{background:#fdecea; color:var(--red);}
+.status-pill.proceso{background:#fff4e5; color:var(--amber);}
+.status-pill.solucionado{background:var(--green-light); color:var(--green-dark);}
+.report-type{font-weight:800; font-size:14.5px; margin-bottom:4px;}
+.report-desc{font-size:13px; color:#555; margin-bottom:8px;}
+.report-meta{font-size:11.5px; color:var(--text-soft); margin-bottom:10px; line-height:1.5;}
+.report-actions{display:flex; gap:8px;}
+.mini-btn{flex:1; text-align:center; padding:8px; border-radius:8px; font-size:12px; font-weight:700; background:#f1f2f0;}
+.mini-btn.primary{background:var(--green); color:#fff;}
+.status-select{width:100%; margin-top:8px; padding:7px; border-radius:8px; border:1px solid var(--border); font-size:12px;}
+
+/* ---------- ACTIVITIES ---------- */
+.activities-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px;}
+.activity-card{background:var(--card); border-radius:16px; box-shadow:var(--shadow); overflow:hidden;}
+.activity-card img{width:100%; height:150px; object-fit:cover;}
+.activity-body{padding:14px;}
+.activity-title{font-weight:800; font-size:15.5px; margin-bottom:4px;}
+.activity-desc{font-size:13px; color:#555; margin-bottom:8px;}
+.activity-meta{font-size:12px; color:var(--text-soft); margin-bottom:10px; line-height:1.6;}
+.activity-meta b{color:var(--text);}
+.activity-foot{display:flex; align-items:center; justify-content:space-between;}
+.participants-txt{font-size:12px; color:var(--text-soft); font-weight:600;}
+
+/* ---------- STATS / PROFILE MODALS ---------- */
+.overlay{position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:3000; display:flex; align-items:center; justify-content:center; padding:16px;}
+.modal{background:#fff; border-radius:20px; width:100%; max-width:480px; max-height:88vh; overflow-y:auto; padding:24px; position:relative;}
+.modal-close{position:absolute; top:16px; right:16px; font-size:22px; color:#888; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center;}
+.modal-close:hover{background:#f0f0f0;}
+.modal h2{font-size:20px; font-weight:800; margin-bottom:18px;}
+.stats-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+.stat-box{background:var(--green-light); border-radius:14px; padding:16px; text-align:center;}
+.stat-box .num{font-size:26px; font-weight:900; color:var(--green-dark);}
+.stat-box .lbl{font-size:12px; color:#555; font-weight:600; margin-top:2px;}
+
+/* ---------- REPORT FORM ---------- */
+.form-field{margin-bottom:14px;}
+.form-field label{display:block; font-size:12.5px; font-weight:700; margin-bottom:6px; color:#444;}
+.form-field input[type=text], .form-field textarea, .form-field select{
+  width:100%; border:1px solid var(--border); border-radius:10px; padding:10px 12px; font-size:13.5px; outline:none;
+}
+.form-field textarea{resize:vertical; min-height:70px;}
+.photo-btns{display:flex; gap:10px;}
+.photo-btn{flex:1; border:1.5px dashed #bbb; border-radius:12px; padding:16px; text-align:center; font-size:12.5px; font-weight:700; color:#666;}
+.photo-btn:hover{border-color:var(--green); color:var(--green);}
+.photo-preview{width:100%; height:150px; object-fit:cover; border-radius:12px; margin-top:10px;}
+.mini-map{height:180px; border-radius:12px; margin-top:8px;}
+.gps-status{font-size:12px; color:var(--green-dark); margin-top:6px; font-weight:600;}
+.btn-submit{width:100%; background:var(--green); color:#fff; font-weight:800; padding:13px; border-radius:12px; font-size:14.5px; margin-top:6px;}
+.btn-submit:hover{background:var(--green-dark);}
+.type-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+.type-opt{border:1.5px solid var(--border); border-radius:10px; padding:9px; text-align:center; font-size:12px; font-weight:700; color:#555;}
+.type-opt.sel{border-color:var(--green); background:var(--green-light); color:var(--green-dark);}
+
+/* ---------- PROFILE ---------- */
+.profile-head{display:flex; flex-direction:column; align-items:center; text-align:center; margin-bottom:18px;}
+.profile-head img{width:88px; height:88px; border-radius:50%; margin-bottom:10px; border:3px solid var(--green);}
+.profile-avatar-big{width:88px; height:88px; margin-bottom:10px; border:3px solid var(--green); font-size:32px;}
+.profile-head h3{font-size:19px; font-weight:800;}
+.profile-head p{font-size:13px; color:var(--text-soft); margin-top:4px;}
+.edit-btn{margin-top:10px; background:var(--green-light); color:var(--green-dark); font-weight:700; font-size:12.5px; padding:8px 16px; border-radius:10px;}
+
+/* toast */
+.toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#222; color:#fff; padding:12px 22px; border-radius:30px; font-size:13.5px; z-index:5000; box-shadow:0 4px 20px rgba(0,0,0,0.3); opacity:0; transition:opacity 0.25s;}
+.toast.show{opacity:1;}
+
+.leaflet-popup-content{font-size:12.5px; line-height:1.5;}
+.popup-title{font-weight:800; margin-bottom:4px;}
+.popup-status{font-weight:700;}
+
+@media(max-width:759px){
+  .topbar{gap:10px; padding:10px 12px 12px; flex-wrap:wrap;}
+  .search-box{order:3; flex:1 1 100%; margin-top:8px;}
+  .navlinks{order:2; gap:10px; justify-content:space-between; width:100%;}
+  .navlink span{display:none;}
+  .navlink{font-size:0; min-width:40px;}
+  .navlink svg{width:24px; height:24px;}
+  .user-wrap{margin-left:auto;}
+  .user-text{display:none;}
+  .container{padding:0;}
+  #view-inicio .home-grid,
+  #view-inicio .feed-panel{height:100%; min-height:0;}
+  .home-grid{gap:12px;}
+  .meeting-box{font-size:10px;}
+  .comments-card{max-height:none;}
+  .map-card .leaflet-container{height:360px;}
+  .bottom-bar{border-radius:16px;}
+  .bb-item{min-width:120px; padding:12px 12px;}
+  .bb-item.reportar{font-size:18px; letter-spacing:0.5px;}
+  .bb-item.reportar .cam-circ{width:38px; height:38px;}
+  .view:not(#view-inicio){padding:16px 12px 24px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<div class="topbar">
+  <div class="logo-wrap" id="logoHome">
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <g>
+        <ellipse cx="50" cy="22" rx="12" ry="18" fill="#8b5cf6"/>
+        <ellipse cx="50" cy="78" rx="12" ry="18" fill="#22c55e"/>
+        <ellipse cx="22" cy="50" rx="18" ry="12" fill="#f5a623"/>
+        <ellipse cx="78" cy="50" rx="18" ry="12" fill="#3fae29"/>
+        <ellipse cx="30" cy="30" rx="12" ry="17" fill="#f59e0b" transform="rotate(-45 30 30)"/>
+        <ellipse cx="70" cy="70" rx="12" ry="17" fill="#16a34a" transform="rotate(-45 70 70)"/>
+        <ellipse cx="70" cy="30" rx="12" ry="17" fill="#f97316" transform="rotate(45 70 30)"/>
+        <ellipse cx="30" cy="70" rx="12" ry="17" fill="#65a30d" transform="rotate(45 30 70)"/>
+        <circle cx="50" cy="50" r="15" fill="#f5a623"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="search-box">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="searchInput" placeholder="Buscar">
+  </div>
+
+  <div class="navlinks">
+    <div class="navlink active" data-view="inicio">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+      <span>Inicio</span>
+    </div>
+    <div class="navlink" data-view="mapa">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/></svg>
+      <span>Mapa</span>
+    </div>
+    <div class="navlink" data-view="reportes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6v4H9z"/><path d="M6 4h12v18H6z"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      <span>Reportes</span>
+    </div>
+    <div class="navlink" data-view="comunidad">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Comunidad</span>
+    </div>
+    <div class="navlink" data-view="actividades">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      <span>Actividades</span>
+    </div>
+  </div>
+
+  <div class="bell-wrap" id="bellBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <div class="bell-badge" id="bellBadge">3</div>
+  </div>
+
+  <div class="user-wrap" id="profileBtn">
+    <div class="user-text">
+      <div class="hello" id="helloText">¡HOLA JUNIOR PARRA!</div>
+      <div class="sub">Hoy puedes ayudar a que<br>León sea un poco más limpio</div>
+    </div>
+    <div id="topUserAvatarWrap"></div>
+  </div>
+</div>
+
+<div id="notifDropdown" class="dropdown hidden">
+  <h4>Notificaciones</h4>
+  <div id="notifList"></div>
+</div>
+
+<!-- ============ MAIN CONTAINER ============ -->
+<div class="container">
+
+  <!-- ---------------- INICIO ---------------- -->
+  <div class="view active" id="view-inicio">
+    <div class="home-grid">
+      <div class="feed-panel">
+        <div id="postsCol"></div>
+        <div id="commentsCol"></div>
+      </div>
+      <div>
+        <div class="map-card">
+          <div class="map-legend">
+            <div class="lg-row"><span class="dot red"></span> Problemas reportados</div>
+            <div class="lg-row"><span class="dot orange"></span> Problemas en proceso</div>
+            <div class="lg-row"><span class="dot green"></span> Problemas solucionados</div>
+            <div class="lg-foot">
+              <div class="trash-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></div>
+              <div class="txt">Este ícono representa todos los lugares donde puedas botar tu basura</div>
+            </div>
+          </div>
+          <div id="mapHome"></div>
+          <div class="locate-btn" id="locateHomeBtn">📍 Mi ubicación</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="bb-item" id="statsBtn">
+        <div class="bb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+        <div>
+          <div class="bb-title">Estadísticas</div>
+          <div class="bb-sub">Observar mi rendimiento y el estado de mi ciudad ></div>
+        </div>
+      </div>
+      <div class="bb-item" id="streakBtn" style="flex:0.6;">
+        <div class="bb-icon">🔥</div>
+        <div>
+          <div class="bb-title" id="streakNum">10</div>
+          <div class="bb-sub">Días</div>
+        </div>
+      </div>
+      <div class="bb-item reportar" id="reportarBtn">
+        REPORTAR
+        <div class="cam-circ">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---------------- MAPA ---------------- -->
+  <div class="view" id="view-mapa">
+    <div class="section-title">Mapa de León</div>
+    <div class="map-card">
+      <div class="map-legend">
+        <div class="lg-row"><span class="dot red"></span> Problemas reportados</div>
+        <div class="lg-row"><span class="dot orange"></span> Problemas en proceso</div>
+        <div class="lg-row"><span class="dot green"></span> Problemas solucionados</div>
+      </div>
+      <div id="mapFull" style="height:600px;"></div>
+      <div class="locate-btn" id="locateFullBtn">📍 Mi ubicación</div>
+      <div class="map-status" id="mapFullStatus"></div>
+    </div>
+  </div>
+
+  <!-- ---------------- REPORTES ---------------- -->
+  <div class="view" id="view-reportes">
+    <div class="section-title">Reportes <button class="add-btn" id="newReportBtn">+ Nuevo reporte</button></div>
+    <div class="reports-grid" id="reportsGrid"></div>
+  </div>
+
+  <!-- ---------------- COMUNIDAD ---------------- -->
+  <div class="view" id="view-comunidad">
+    <div class="section-title">Comunidad <button class="add-btn" id="newPostBtn">+ Publicar</button></div>
+    <div class="home-grid" style="grid-template-columns:1fr;">
+      <div id="communityCol" style="max-width:640px; margin:0 auto; width:100%;"></div>
+    </div>
+  </div>
+
+  <!-- ---------------- ACTIVIDADES ---------------- -->
+  <div class="view" id="view-actividades">
+    <div class="section-title">Actividades <button class="add-btn" id="newActivityBtn">+ Nueva actividad</button></div>
+    <div class="activities-grid" id="activitiesGrid"></div>
+  </div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* ===================== DATA MODEL ===================== */
+const LEON = [12.4340, -86.8780];
+
+const currentUser = {
+  id:'u1', name:'Junior Parra',
+  avatar:'https://i.pravatar.cc/150?img=13',
+  bio:'Vecino del Barrio Sutiava, comprometido con un León más limpio.'
+};
+
+const usersDB = {
+  u1: currentUser,
+  u2:{id:'u2', name:'Fernando Quezada', avatar:null},
+  u3:{id:'u3', name:'Kathy Rachell', avatar:null},
+  u4:{id:'u4', name:'Silvia Altamirano', avatar:null},
+  u5:{id:'u5', name:'Marcos Gaitán', avatar:null},
+  u6:{id:'u6', name:'Ana Belén Ruiz', avatar:null},
+};
+const INITIAL_COLORS = ['#3fae29','#f5a623','#8b5cf6','#f97316','#16a34a','#e53935','#0891b2','#a16207'];
+function colorFromName(name){
+  let hash=0; for(let i=0;i<name.length;i++){ hash = name.charCodeAt(i) + ((hash<<5)-hash); }
+  return INITIAL_COLORS[Math.abs(hash) % INITIAL_COLORS.length];
+}
+function avatarHTML(user, sizeClass){
+  if(user.avatar){
+    return `<img class="avatar-round ${sizeClass}" src="${user.avatar}">`;
+  }
+  const initial = user.name.trim().charAt(0).toUpperCase();
+  return `<div class="avatar-round avatar-initial ${sizeClass}" style="background:${colorFromName(user.name)}">${initial}</div>`;
+}
+function stackAvatarHTML(user){
+  if(user.avatar) return `<img src="${user.avatar}">`;
+  const initial = user.name.trim().charAt(0).toUpperCase();
+  return `<div class="stack-initial" style="background:${colorFromName(user.name)}">${initial}</div>`;
+}
+
+let reports = [
+  {id:'r1', userId:'u1', type:'Acumulación de basura', description:'Acumulación de basura en la calle, cerca del predio baldío.', image:'https://images.unsplash.com/photo-1621451537084-482c73073a0f?w=600&q=60', lat:12.4340, lng:-86.8780, date:'11/08/2026', status:'reportado'},
+  {id:'r2', userId:'u3', type:'Basura acumulada', description:'Botes de basura desbordados en la esquina.', image:'https://images.unsplash.com/photo-1550963295-019d8a8a61c5?w=600&q=60', lat:12.4415, lng:-86.8735, date:'10/08/2026', status:'proceso'},
+  {id:'r3', userId:'u5', type:'Vertedero improvisado', description:'Vertedero clandestino cerca del cauce.', image:'https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?w=600&q=60', lat:12.4460, lng:-86.8695, date:'08/08/2026', status:'reportado'},
+  {id:'r4', userId:'u6', type:'Contaminación de cauce', description:'Desechos plásticos arrastrados al cauce.', image:'https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?w=600&q=60', lat:12.4265, lng:-86.8825, date:'05/08/2026', status:'solucionado'},
+  {id:'r5', userId:'u2', type:'Basura en vía pública', description:'Bolsas de basura sin recoger frente al mercado.', image:'https://images.unsplash.com/photo-1605600659873-d808a13e4d2a?w=600&q=60', lat:12.4390, lng:-86.8650, date:'03/08/2026', status:'proceso'},
+];
+
+let activities = [
+  {id:'a1', name:'Limpieza comunitaria Sutiava', description:'Jornada de recolección de basura y separación de reciclaje en el barrio.', image:'https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?w=600&q=60', date:'Martes 11 de agosto 2026', time:'10:00 AM', place:'Del Súper Express de los Repartos 25vr/E', lat:12.4340, lng:-86.8780, organizerId:'u1', participants:['u1','u2','u3','u4','u5','u6'], joined:true},
+  {id:'a2', name:'Reforestación Río Chiquito', description:'Sembraremos árboles nativos junto al cauce para prevenir erosión.', image:'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=600&q=60', date:'Sábado 22 de agosto 2026', time:'8:00 AM', place:'Puente Río Chiquito', lat:12.4460, lng:-86.8695, organizerId:'u6', participants:['u6','u3'], joined:false},
+];
+
+let posts = [
+  {
+    id:'p1', userId:'u1', time:'hace 2 horas', location:'León Nicaragua',
+    meeting:{hour:'10:00 A.M', date:'MARTES 11 de agosto 2026', place:'Del super express de los repartos 25vr/E', lat:12.4340, lng:-86.8780},
+    description:'Encontre este lugar del cual creo que con ayuda de todos podemos mejorar',
+    image:'https://images.unsplash.com/photo-1621451537084-482c73073a0f?w=800&q=60',
+    likes:281, likedByMe:false,
+    joined:true, participants:52,
+    comments:[
+      {id:'c1', userId:'u2', time:'hace 1 horas', text:'Yo apoyo, yo vivo a una cuadra jajaja', likes:4, likedByMe:false, replies:[]},
+      {id:'c2', userId:'u3', time:'hace 55 minutos', text:'Como quisiera apoyar, pero lamentablemente no coincide con mi horario de clases, pero…', likes:2, likedByMe:true, replies:[]},
+      {id:'c3', userId:'u4', time:'hace 25 minutos', text:'yo me uniré por cierto… soy nueva, que debo de llevar para participar??', likes:1, likedByMe:false, replies:[
+        {id:'c3r1', userId:'u1', time:'hace 20 minutos', text:'¡Bienvenida! Solo trae guantes y muchas ganas 🌱'}
+      ]},
+    ]
+  },
+  {
+    id:'p2', userId:'u6', time:'hace 5 horas', location:'Barrio Guadalupe, León',
+    meeting:null,
+    description:'El cauce cerca de mi casa está lleno de plástico otra vez. ¿Alguien se une este fin de semana a limpiarlo?',
+    image:'https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?w=800&q=60',
+    likes:97, likedByMe:false,
+    joined:false, participants:14,
+    comments:[
+      {id:'c4', userId:'u5', time:'hace 3 horas', text:'Cuenta conmigo este sábado', likes:3, likedByMe:false, replies:[]},
+    ]
+  }
+];
+
+let notifications = [
+  {id:'n1', type:'comentario', message:'Fernando Quezada comentó en tu publicación', time:'hace 1 hora', read:false},
+  {id:'n2', type:'like', message:'A Kathy Rachell le gustó tu reporte', time:'hace 2 horas', read:false},
+  {id:'n3', type:'actividad', message:'Nueva actividad: Reforestación Río Chiquito', time:'hace 1 día', read:false},
+  {id:'n4', type:'estado', message:'Tu reporte cambió a "En proceso"', time:'hace 2 días', read:true},
+];
+
+let streakDays = 10;
+let searchTerm = '';
+let mapHomeInstance, mapFullInstance;
+let selectedReportLatLng = null;
+let selectedType = 'Acumulación de basura';
+let pendingPhotoDataUrl = null;
+
+/* ===================== HELPERS ===================== */
+function el(html){ const d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstChild; }
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._tm); t._tm=setTimeout(()=>t.classList.remove('show'),2200);
+}
+function statusLabel(s){ return s==='reportado'?'Problema reportado':s==='proceso'?'Problema en proceso':'Problema solucionado'; }
+function statusColor(s){ return s==='reportado'?'#e53935':s==='proceso'?'#fb8c00':'#3fae29'; }
+function matchesSearch(text){ return !searchTerm || text.toLowerCase().includes(searchTerm.toLowerCase()); }
+
+function syncLayoutHeight(){
+  const topbar = document.querySelector('.topbar');
+  if(topbar) document.documentElement.style.setProperty('--topbar-height', `${topbar.offsetHeight}px`);
+}
+syncLayoutHeight();
+window.addEventListener('resize', syncLayoutHeight);
+
+/* ===================== TOP BAR ===================== */
+document.getElementById('topUserAvatarWrap').innerHTML = avatarHTML(currentUser,'');
+document.getElementById('helloText').textContent = `¡HOLA ${currentUser.name.toUpperCase()}!`;
+
+document.querySelectorAll('.navlink').forEach(nl=>{
+  nl.addEventListener('click', ()=> switchView(nl.dataset.view));
+});
+document.getElementById('logoHome').addEventListener('click', ()=>switchView('inicio'));
+
+function switchView(name){
+  document.querySelectorAll('.navlink').forEach(n=>n.classList.toggle('active', n.dataset.view===name));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  if(name==='mapa'){ setTimeout(()=>{ if(mapFullInstance){ mapFullInstance.invalidateSize(); } },80); }
+  if(name==='inicio'){ setTimeout(()=>{ if(mapHomeInstance){ mapHomeInstance.invalidateSize(); } },80); }
+}
+
+/* search */
+document.getElementById('searchInput').addEventListener('input', e=>{
+  searchTerm = e.target.value;
+  renderPosts(); renderComments(currentOpenPostId); renderReports(); renderActivities(); renderCommunity();
+});
+
+/* notifications dropdown */
+const bellBtn = document.getElementById('bellBtn');
+const notifDropdown = document.getElementById('notifDropdown');
+bellBtn.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  notifDropdown.classList.toggle('hidden');
+  renderNotifications();
+});
+document.addEventListener('click', (e)=>{
+  if(!notifDropdown.contains(e.target) && e.target!==bellBtn) notifDropdown.classList.add('hidden');
+});
+function renderNotifications(){
+  const list=document.getElementById('notifList');
+  list.innerHTML='';
+  notifications.forEach(n=>{
+    list.appendChild(el(`<div class="notif-item ${n.read?'':'unread'}">
+      <div class="notif-dot"></div>
+      <div><div>${n.message}</div><div class="t">${n.time}</div></div>
+    </div>`));
+  });
+  notifications.forEach(n=>n.read=true);
+  updateBellBadge();
+}
+function updateBellBadge(){
+  const unread = notifications.filter(n=>!n.read).length;
+  const badge=document.getElementById('bellBadge');
+  if(unread>0){ badge.textContent=unread; badge.style.display='flex'; } else { badge.style.display='none'; }
+}
+function addNotification(message, type){
+  notifications.unshift({id:'n'+Date.now(), type, message, time:'ahora mismo', read:false});
+  updateBellBadge();
+}
+updateBellBadge();
+
+/* profile */
+document.getElementById('profileBtn').addEventListener('click', openProfile);
+function openProfile(){
+  const myReports = reports.filter(r=>r.userId===currentUser.id).length;
+  const myPosts = posts.filter(p=>p.userId===currentUser.id).length;
+  const myActivities = activities.filter(a=>a.participants.includes(currentUser.id)).length;
+  openModal(`
+    <div class="profile-head">
+      ${avatarHTML(currentUser,'').replace('avatar-round','avatar-round profile-avatar-big')}
+      <h3>${currentUser.name}</h3>
+      <p>${currentUser.bio}</p>
+      <button class="edit-btn" id="editProfileBtn">Editar perfil</button>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-box"><div class="num">${myPosts}</div><div class="lbl">Publicaciones</div></div>
+      <div class="stat-box"><div class="num">${myReports}</div><div class="lbl">Reportes</div></div>
+      <div class="stat-box"><div class="num">${myActivities}</div><div class="lbl">Actividades</div></div>
+      <div class="stat-box"><div class="num">${streakDays} 🔥</div><div class="lbl">Racha</div></div>
+    </div>
+  `,'Mi perfil');
+  document.getElementById('editProfileBtn').addEventListener('click', ()=>{
+    const newName = prompt('Nombre:', currentUser.name);
+    if(newName){ currentUser.name=newName; document.getElementById('helloText').textContent=`¡HOLA ${currentUser.name.toUpperCase()}!`; }
+    const newBio = prompt('Información del perfil:', currentUser.bio);
+    if(newBio) currentUser.bio=newBio;
+    closeModal(); openProfile();
+  });
+}
+
+/* ===================== MODAL SYSTEM ===================== */
+function openModal(innerHtml, title){
+  const overlay = el(`<div class="overlay" id="activeOverlay">
+    <div class="modal">
+      <div class="modal-close" id="modalCloseBtn">&times;</div>
+      ${title?`<h2>${title}</h2>`:''}
+      <div id="modalBody"></div>
+    </div>
+  </div>`);
+  document.body.appendChild(overlay);
+  document.getElementById('modalBody').innerHTML = innerHtml;
+  document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) closeModal(); });
+}
+function closeModal(){
+  const o=document.getElementById('activeOverlay');
+  if(o) o.remove();
+}
+
+/* ===================== POSTS (INICIO) ===================== */
+let currentOpenPostId = posts[0].id;
+
+function postCardHTML(p){
+  const u = usersDB[p.userId];
+  return `
+  <div class="card" data-post="${p.id}">
+    <div class="post-head">
+      <div class="post-user">
+        <div class="avatar-dotwrap">
+          ${avatarHTML(u,'')}
+          <div class="online-dot"></div>
+        </div>
+        <div>
+          <div class="pname">${u.name}</div>
+          <div class="pmeta">${p.time} · ${p.location}</div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:flex-start; gap:10px;">
+        ${p.meeting ? `<div class="meeting-box">
+          HORA DE REUNIÓN: ${p.meeting.hour}<br>
+          FECHA: ${p.meeting.date}<br>
+          LUGAR: ${p.meeting.place}<br>
+          <span class="ver-mapa" data-lat="${p.meeting.lat}" data-lng="${p.meeting.lng}">VER EN EL MAPA</span>
+        </div>` : ''}
+        <div class="menu-dots" data-menu="${p.id}">⋯</div>
+      </div>
+    </div>
+    <div class="post-desc">${p.description}</div>
+    <div class="post-photo"><img src="${p.image}"></div>
+    <div class="post-actions">
+      <div class="action-btn like-btn ${p.likedByMe?'liked':''}" data-like="${p.id}">
+        <svg viewBox="0 0 24 24" fill="${p.likedByMe?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+        <span>${p.likes}</span>
+      </div>
+      <div class="action-btn open-comments" data-open="${p.id}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>${p.comments.length}</span>
+      </div>
+      <div class="action-btn share-btn" data-share="${p.id}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>
+        <span>Compartir</span>
+      </div>
+    </div>
+    <div class="join-row">
+      <div class="btn-join ${p.joined?'joined':''}" data-join="${p.id}">${p.joined?'UNIDO ✓':'UNIRSE'}</div>
+      <div class="stack-avatars">
+        ${Object.values(usersDB).slice(0,4).map(u=>stackAvatarHTML(u)).join('')}
+      </div>
+      <div class="stack-count">+${p.participants}</div>
+    </div>
+  </div>`;
+}
+
+function visiblePostId(){
+  const feed = document.getElementById('postsCol');
+  if(!feed) return null;
+  const point = document.elementFromPoint(feed.getBoundingClientRect().left + feed.clientWidth / 2, feed.getBoundingClientRect().top + feed.clientHeight / 2);
+  return point?.closest('.card')?.dataset.post || null;
+}
+
+function renderPosts(keepPostId=null){
+  const col = document.getElementById('postsCol');
+  const filtered = posts.filter(p=> matchesSearch(p.description) || matchesSearch(usersDB[p.userId].name) || matchesSearch(p.location));
+  col.innerHTML = filtered.map(postCardHTML).join('') || `<div class="card">No se encontraron publicaciones.</div>`;
+  attachPostEvents(col);
+  if(keepPostId){
+    requestAnimationFrame(()=>{
+      const post = col.querySelector(`[data-post="${keepPostId}"]`);
+      if(post) col.scrollTop = post.offsetTop;
+    });
+  }
+}
+
+function attachPostEvents(scope){
+  scope.querySelectorAll('.like-btn').forEach(b=>b.addEventListener('click', ()=>toggleLikePost(b.dataset.like)));
+  scope.querySelectorAll('.open-comments').forEach(b=>b.addEventListener('click', ()=>{ currentOpenPostId=b.dataset.open; renderComments(currentOpenPostId); if(window.innerWidth<1000){ document.getElementById('commentsCol').scrollIntoView({behavior:'smooth'}); } }));
+  scope.querySelectorAll('.share-btn').forEach(b=>b.addEventListener('click', ()=>sharePost(b.dataset.share)));
+  scope.querySelectorAll('[data-join]').forEach(b=>b.addEventListener('click', ()=>toggleJoin(b.dataset.join)));
+  scope.querySelectorAll('.ver-mapa').forEach(b=>b.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    switchView('mapa');
+    setTimeout(()=>{ mapFullInstance.setView([parseFloat(b.dataset.lat), parseFloat(b.dataset.lng)], 16); },150);
+  }));
+  scope.querySelectorAll('[data-menu]').forEach(b=>b.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    if(confirm('¿Deseas reportar esta publicación?')) toast('Publicación reportada. Gracias por ayudar a mantener la comunidad segura.');
+  }));
+}
+
+function toggleLikePost(id){
+  const p = posts.find(p=>p.id===id);
+  const keepPostId = visiblePostId();
+  p.likedByMe = !p.likedByMe;
+  p.likes += p.likedByMe ? 1 : -1;
+  renderPosts(keepPostId); renderCommunity();
+}
+function toggleJoin(id){
+  const p = posts.find(p=>p.id===id);
+  const keepPostId = visiblePostId();
+  p.joined = !p.joined;
+  p.participants += p.joined ? 1 : -1;
+  toast(p.joined ? '¡Te uniste a la jornada!' : 'Has salido de la jornada.');
+  renderPosts(keepPostId); renderCommunity();
+}
+function sharePost(id){
+  const p = posts.find(p=>p.id===id);
+  const shareUrl = `https://ecoruta.app/publicacion/${id}`;
+  if(navigator.share){
+    navigator.share({title:'ECORUTA', text:p.description, url:shareUrl}).catch(()=>{});
+  } else {
+    navigator.clipboard?.writeText(shareUrl);
+    toast('Enlace de la publicación copiado');
+  }
+}
+
+/* ===================== COMMENTS ===================== */
+function renderComments(postId){
+  const p = posts.find(p=>p.id===postId);
+  const col = document.getElementById('commentsCol');
+  if(!p){ col.innerHTML=''; return; }
+  col.innerHTML = `
+  <div class="comments-card">
+    <div class="comments-head">Comentarios (${countAllComments(p)})</div>
+    <div class="comments-list" id="commentsList"></div>
+    <div class="comment-input-bar">
+      <input type="text" id="newCommentInput" placeholder="Escribe tu comentario">
+      <div class="send-btn" id="sendCommentBtn"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div>
+    </div>
+  </div>`;
+  const list = document.getElementById('commentsList');
+  p.comments.forEach(c=>{
+    const u = usersDB[c.userId];
+    const commentEl = el(`<div class="comment" data-cid="${c.id}">
+      <div class="comment-row">
+        ${avatarHTML(u,'sm')}
+        <div class="comment-body">
+          <div><span class="comment-name">${u.name}</span><span class="comment-time">${c.time}</span></div>
+          <div class="comment-text">${c.text}</div>
+          <div class="comment-foot">
+            <span class="reply-toggle">Responder</span>
+            <span class="like-comment">${c.likedByMe?'❤️':'🤍'} ${c.likes}</span>
+          </div>
+          <div class="reply-list"></div>
+          <div class="reply-input-row hidden">
+            <input type="text" placeholder="Escribe una respuesta...">
+            <div class="send-btn" style="width:32px;height:32px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>`);
+    const replyList = commentEl.querySelector('.reply-list');
+    c.replies.forEach(r=>{
+      const ru = usersDB[r.userId];
+      replyList.appendChild(el(`<div class="comment" style="margin-bottom:8px;">
+        <div class="comment-row">
+          ${avatarHTML(ru,'xs')}
+          <div class="comment-body">
+            <div><span class="comment-name" style="font-size:12.5px;">${ru.name}</span><span class="comment-time">${r.time}</span></div>
+            <div class="comment-text">${r.text}</div>
+          </div>
+        </div>
+      </div>`));
+    });
+    commentEl.querySelector('.reply-toggle').addEventListener('click', ()=>{
+      commentEl.querySelector('.reply-input-row').classList.toggle('hidden');
+    });
+    commentEl.querySelector('.like-comment').addEventListener('click', ()=>{
+      c.likedByMe = !c.likedByMe;
+      c.likes += c.likedByMe ? 1 : -1;
+      renderComments(postId);
+    });
+    const replyInput = commentEl.querySelector('.reply-input-row input');
+    commentEl.querySelector('.reply-input-row .send-btn').addEventListener('click', ()=>{
+      if(replyInput.value.trim()===''){ return; }
+      c.replies.push({id:'r'+Date.now(), userId:currentUser.id, time:'ahora mismo', text:replyInput.value.trim()});
+      renderComments(postId);
+    });
+    list.appendChild(commentEl);
+  });
+  document.getElementById('sendCommentBtn').addEventListener('click', ()=>submitComment(postId));
+  document.getElementById('newCommentInput').addEventListener('keydown', e=>{ if(e.key==='Enter') submitComment(postId); });
+}
+function countAllComments(p){ return p.comments.reduce((sum,c)=>sum+1+c.replies.length,0); }
+function submitComment(postId){
+  const input = document.getElementById('newCommentInput');
+  const text = input.value.trim();
+  if(!text) return;
+  const p = posts.find(p=>p.id===postId);
+  p.comments.push({id:'c'+Date.now(), userId:currentUser.id, time:'ahora mismo', text, likes:0, likedByMe:false, replies:[]});
+  input.value='';
+  renderPosts(); renderComments(postId); renderCommunity();
+  addNotification('Nuevo comentario en tu publicación', 'comentario');
+}
+
+/* ===================== COMMUNITY VIEW ===================== */
+function renderCommunity(){
+  const col = document.getElementById('communityCol');
+  if(!col) return;
+  const filtered = posts.filter(p=> matchesSearch(p.description) || matchesSearch(usersDB[p.userId].name));
+  col.innerHTML = filtered.map(postCardHTML).join('');
+  attachPostEvents(col);
+}
+document.getElementById('newPostBtn').addEventListener('click', ()=>{
+  openModal(`
+    <div class="form-field"><label>¿Qué quieres compartir?</label><textarea id="newPostText" placeholder="Describe el problema o iniciativa..."></textarea></div>
+    <div class="form-field"><label>Fotografía</label>
+      <div class="photo-btns">
+        <div class="photo-btn" id="postPhotoBtn">📷 Tomar / seleccionar foto</div>
+      </div>
+      <img id="postPhotoPreview" class="photo-preview hidden">
+      <input type="file" id="postPhotoInput" accept="image/*" class="hidden">
+    </div>
+    <button class="btn-submit" id="submitPostBtn">Publicar</button>
+  `, 'Nueva publicación');
+  document.getElementById('postPhotoBtn').addEventListener('click', ()=>document.getElementById('postPhotoInput').click());
+  document.getElementById('postPhotoInput').addEventListener('change', (e)=>{
+    const file=e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{ pendingPhotoDataUrl = reader.result; const img=document.getElementById('postPhotoPreview'); img.src=pendingPhotoDataUrl; img.classList.remove('hidden'); };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('submitPostBtn').addEventListener('click', ()=>{
+    const text = document.getElementById('newPostText').value.trim();
+    if(!text){ toast('Escribe una descripción para publicar'); return; }
+    posts.unshift({
+      id:'p'+Date.now(), userId:currentUser.id, time:'ahora mismo', location:'León Nicaragua',
+      meeting:null, description:text,
+      image: pendingPhotoDataUrl || 'https://images.unsplash.com/photo-1621451537084-482c73073a0f?w=800&q=60',
+      likes:0, likedByMe:false, joined:true, participants:1, comments:[]
+    });
+    pendingPhotoDataUrl=null;
+    closeModal(); renderPosts(); renderCommunity();
+    toast('¡Publicación creada!');
+  });
+});
+
+/* ===================== REPORTS VIEW ===================== */
+function reportCardHTML(r){
+  const u = usersDB[r.userId];
+  return `<div class="report-card" data-rid="${r.id}">
+    <img src="${r.image}">
+    <div class="report-body">
+      <span class="status-pill ${r.status}">${statusLabel(r.status)}</span>
+      <div class="report-type">${r.type}</div>
+      <div class="report-desc">${r.description}</div>
+      <div class="report-meta">👤 ${u.name} · 📅 ${r.date}<br>📍 ${r.lat.toFixed(4)}, ${r.lng.toFixed(4)}</div>
+      <div class="report-actions">
+        <div class="mini-btn primary" data-viewmap="${r.id}">Ver en el mapa</div>
+      </div>
+      ${r.userId===currentUser.id ? `<select class="status-select" data-statuschange="${r.id}">
+        <option value="reportado" ${r.status==='reportado'?'selected':''}>Reportado</option>
+        <option value="proceso" ${r.status==='proceso'?'selected':''}>En proceso</option>
+        <option value="solucionado" ${r.status==='solucionado'?'selected':''}>Solucionado</option>
+      </select>` : ''}
+    </div>
+  </div>`;
+}
+function renderReports(){
+  const grid = document.getElementById('reportsGrid');
+  const filtered = reports.filter(r=> matchesSearch(r.type)||matchesSearch(r.description));
+  grid.innerHTML = filtered.map(reportCardHTML).join('') || '<div class="card">No se encontraron reportes.</div>';
+  grid.querySelectorAll('[data-viewmap]').forEach(b=>b.addEventListener('click', ()=>{
+    const r = reports.find(r=>r.id===b.dataset.viewmap);
+    switchView('mapa');
+    setTimeout(()=>{ mapFullInstance.setView([r.lat, r.lng], 16); openReportPopupOnMap(mapFullInstance, r); },150);
+  }));
+  grid.querySelectorAll('[data-statuschange]').forEach(s=>s.addEventListener('change', ()=>{
+    const r = reports.find(r=>r.id===s.dataset.statuschange);
+    r.status = s.value;
+    renderReports(); refreshMarkers();
+    toast(`Estado actualizado a: ${statusLabel(r.status)}`);
+    addNotification(`Tu reporte cambió a "${statusLabel(r.status)}"`, 'estado');
+  }));
+}
+document.getElementById('newReportBtn').addEventListener('click', openReportForm);
+document.getElementById('reportarBtn').addEventListener('click', openReportForm);
+
+function openReportForm(){
+  selectedReportLatLng = null; pendingPhotoDataUrl = null; selectedType='Acumulación de basura';
+  openModal(`
+    <div class="form-field"><label>Fotografía</label>
+      <div class="photo-btns"><div class="photo-btn" id="reportPhotoBtn">📷 Tomar / seleccionar foto</div></div>
+      <img id="reportPhotoPreview" class="photo-preview hidden">
+      <input type="file" id="reportPhotoInput" accept="image/*" capture="environment" class="hidden">
+    </div>
+    <div class="form-field"><label>Tipo de problema</label>
+      <div class="type-grid" id="typeGrid">
+        ${['Acumulación de basura','Vertedero improvisado','Contaminación de cauce','Tala ilegal','Aguas residuales','Otro'].map(t=>`<div class="type-opt ${t===selectedType?'sel':''}" data-type="${t}">${t}</div>`).join('')}
+      </div>
+    </div>
+    <div class="form-field"><label>Descripción</label><textarea id="reportDesc" placeholder="Describe el problema..."></textarea></div>
+    <div class="form-field"><label>Ubicación</label>
+      <div id="reportMiniMap" class="mini-map"></div>
+      <div class="gps-status" id="gpsStatus">Toca el mapa o usa tu ubicación GPS para fijar el punto.</div>
+      <div class="locate-btn" id="reportLocateBtn" style="position:static; display:inline-flex; margin-top:8px;">📍 Usar mi ubicación</div>
+    </div>
+    <button class="btn-submit" id="submitReportBtn">Enviar reporte</button>
+  `, 'Reportar problema');
+
+  document.getElementById('reportPhotoBtn').addEventListener('click', ()=>document.getElementById('reportPhotoInput').click());
+  document.getElementById('reportPhotoInput').addEventListener('change', (e)=>{
+    const file=e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{ pendingPhotoDataUrl = reader.result; const img=document.getElementById('reportPhotoPreview'); img.src=pendingPhotoDataUrl; img.classList.remove('hidden'); };
+    reader.readAsDataURL(file);
+  });
+  document.querySelectorAll('#typeGrid .type-opt').forEach(opt=>{
+    opt.addEventListener('click', ()=>{
+      selectedType = opt.dataset.type;
+      document.querySelectorAll('#typeGrid .type-opt').forEach(o=>o.classList.remove('sel'));
+      opt.classList.add('sel');
+    });
+  });
+
+  const miniMap = L.map('reportMiniMap').setView(LEON, 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OpenStreetMap'}).addTo(miniMap);
+  let miniMarker = null;
+  miniMap.on('click', (e)=>{
+    selectedReportLatLng = e.latlng;
+    if(miniMarker) miniMap.removeLayer(miniMarker);
+    miniMarker = L.marker(e.latlng).addTo(miniMap);
+    document.getElementById('gpsStatus').textContent = `Ubicación fijada: ${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
+  });
+  document.getElementById('reportLocateBtn').addEventListener('click', ()=>{
+    if(!navigator.geolocation){ toast('Tu navegador no soporta geolocalización'); return; }
+    document.getElementById('gpsStatus').textContent = 'Obteniendo tu ubicación...';
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const latlng = {lat:pos.coords.latitude, lng:pos.coords.longitude};
+      selectedReportLatLng = latlng;
+      miniMap.setView([latlng.lat, latlng.lng], 16);
+      if(miniMarker) miniMap.removeLayer(miniMarker);
+      miniMarker = L.marker([latlng.lat, latlng.lng]).addTo(miniMap);
+      document.getElementById('gpsStatus').textContent = `Tu ubicación actual: ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`;
+    }, err=>{
+      document.getElementById('gpsStatus').textContent = 'No se pudo obtener tu ubicación. Actívala en tu navegador o selecciona el punto manualmente en el mapa.';
+    }, {enableHighAccuracy:true, timeout:10000});
+  });
+  setTimeout(()=>miniMap.invalidateSize(), 200);
+
+  document.getElementById('submitReportBtn').addEventListener('click', ()=>{
+    const desc = document.getElementById('reportDesc').value.trim();
+    if(!desc){ toast('Escribe una descripción'); return; }
+    if(!selectedReportLatLng){ toast('Selecciona una ubicación en el mapa o usa tu GPS'); return; }
+    const newReport = {
+      id:'r'+Date.now(), userId:currentUser.id, type:selectedType, description:desc,
+      image: pendingPhotoDataUrl || 'https://images.unsplash.com/photo-1605600659873-d808a13e4d2a?w=600&q=60',
+      lat:selectedReportLatLng.lat, lng:selectedReportLatLng.lng,
+      date: new Date().toLocaleDateString('es-NI'), status:'reportado'
+    };
+    reports.unshift(newReport);
+    closeModal(); renderReports(); refreshMarkers();
+    toast('¡Reporte enviado con éxito!');
+    addNotification('Tu reporte fue publicado en el mapa', 'estado');
+  });
+}
+
+/* ===================== ACTIVITIES VIEW ===================== */
+function activityCardHTML(a){
+  const org = usersDB[a.organizerId];
+  const joined = a.participants.includes(currentUser.id);
+  return `<div class="activity-card" data-aid="${a.id}">
+    <img src="${a.image}">
+    <div class="activity-body">
+      <div class="activity-title">${a.name}</div>
+      <div class="activity-desc">${a.description}</div>
+      <div class="activity-meta">
+        📅 <b>${a.date}</b> · 🕐 <b>${a.time}</b><br>
+        📍 ${a.place}<br>
+        Organiza: <b>${org.name}</b>
+      </div>
+      <div class="activity-foot">
+        <span class="participants-txt">${a.participants.length} participantes</span>
+        <div class="btn-join ${joined?'joined':''}" style="padding:9px 18px;" data-actjoin="${a.id}">${joined?'UNIDO ✓':'UNIRSE'}</div>
+      </div>
+      <div class="mini-btn" style="margin-top:10px;" data-actmap="${a.id}">Ver en el mapa</div>
+    </div>
+  </div>`;
+}
+function renderActivities(){
+  const grid = document.getElementById('activitiesGrid');
+  const filtered = activities.filter(a=> matchesSearch(a.name)||matchesSearch(a.description)||matchesSearch(a.place));
+  grid.innerHTML = filtered.map(activityCardHTML).join('') || '<div class="card">No se encontraron actividades.</div>';
+  grid.querySelectorAll('[data-actjoin]').forEach(b=>b.addEventListener('click', ()=>{
+    const a = activities.find(a=>a.id===b.dataset.actjoin);
+    const idx = a.participants.indexOf(currentUser.id);
+    if(idx>=0){ a.participants.splice(idx,1); toast('Has salido de la actividad'); }
+    else { a.participants.push(currentUser.id); toast('¡Te uniste a la actividad!'); addNotification(`Te uniste a "${a.name}"`, 'actividad'); }
+    renderActivities();
+  }));
+  grid.querySelectorAll('[data-actmap]').forEach(b=>b.addEventListener('click', ()=>{
+    const a = activities.find(a=>a.id===b.dataset.actmap);
+    switchView('mapa');
+    setTimeout(()=>{ mapFullInstance.setView([a.lat, a.lng], 16); },150);
+  }));
+}
+document.getElementById('newActivityBtn').addEventListener('click', ()=>{
+  selectedReportLatLng = null;
+  openModal(`
+    <div class="form-field"><label>Nombre de la actividad</label><input type="text" id="actName" placeholder="Ej: Limpieza del parque"></div>
+    <div class="form-field"><label>Descripción</label><textarea id="actDesc"></textarea></div>
+    <div class="form-field"><label>Fecha</label><input type="text" id="actDate" placeholder="Ej: Sábado 22 de agosto 2026"></div>
+    <div class="form-field"><label>Hora</label><input type="text" id="actTime" placeholder="Ej: 9:00 AM"></div>
+    <div class="form-field"><label>Lugar</label><input type="text" id="actPlace" placeholder="Punto de encuentro"></div>
+    <div class="form-field"><label>Ubicación en el mapa</label><div id="actMiniMap" class="mini-map"></div></div>
+    <button class="btn-submit" id="submitActBtn">Crear actividad</button>
+  `, 'Nueva actividad');
+  const miniMap = L.map('actMiniMap').setView(LEON, 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OpenStreetMap'}).addTo(miniMap);
+  let marker=null;
+  miniMap.on('click', e=>{ selectedReportLatLng=e.latlng; if(marker) miniMap.removeLayer(marker); marker=L.marker(e.latlng).addTo(miniMap); });
+  setTimeout(()=>miniMap.invalidateSize(),200);
+  document.getElementById('submitActBtn').addEventListener('click', ()=>{
+    const name=document.getElementById('actName').value.trim();
+    if(!name || !selectedReportLatLng){ toast('Completa el nombre y selecciona un punto en el mapa'); return; }
+    activities.unshift({
+      id:'a'+Date.now(), name, description:document.getElementById('actDesc').value,
+      image:'https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?w=600&q=60',
+      date:document.getElementById('actDate').value||'Por definir', time:document.getElementById('actTime').value||'--',
+      place:document.getElementById('actPlace').value||'Por definir',
+      lat:selectedReportLatLng.lat, lng:selectedReportLatLng.lng,
+      organizerId:currentUser.id, participants:[currentUser.id]
+    });
+    closeModal(); renderActivities(); refreshMarkers();
+    toast('¡Actividad creada!');
+  });
+});
+
+/* ===================== STATS / STREAK ===================== */
+document.getElementById('statsBtn').addEventListener('click', ()=>{
+  const solved = reports.filter(r=>r.status==='solucionado').length;
+  const pending = reports.filter(r=>r.status==='reportado').length;
+  const process = reports.filter(r=>r.status==='proceso').length;
+  const totalComments = posts.reduce((s,p)=>s+countAllComments(p),0);
+  openModal(`
+    <div class="stats-grid">
+      <div class="stat-box"><div class="num">${reports.length}</div><div class="lbl">Total reportes</div></div>
+      <div class="stat-box"><div class="num">${solved}</div><div class="lbl">Solucionados</div></div>
+      <div class="stat-box"><div class="num">${pending}</div><div class="lbl">Pendientes</div></div>
+      <div class="stat-box"><div class="num">${process}</div><div class="lbl">En proceso</div></div>
+      <div class="stat-box"><div class="num">${activities.length}</div><div class="lbl">Actividades</div></div>
+      <div class="stat-box"><div class="num">${Object.keys(usersDB).length}</div><div class="lbl">Participantes</div></div>
+      <div class="stat-box"><div class="num">${posts.length}</div><div class="lbl">Publicaciones</div></div>
+      <div class="stat-box"><div class="num">${totalComments}</div><div class="lbl">Comentarios</div></div>
+    </div>
+  `,'Estadísticas de ECORUTA');
+});
+document.getElementById('streakBtn').addEventListener('click', ()=>{
+  openModal(`<div style="text-align:center; padding:10px;">
+    <div style="font-size:56px;">🔥</div>
+    <div style="font-size:34px; font-weight:900; color:var(--green-dark); margin:8px 0;">${streakDays} días</div>
+    <p style="color:var(--text-soft); font-size:13.5px;">Días consecutivos participando en actividades y acciones ambientales. ¡Sigue así!</p>
+  </div>`, 'Tu racha');
+});
+
+/* ===================== MAP (Leaflet) ===================== */
+function statusIcon(status){
+  const color = statusColor(status);
+  return L.divIcon({
+    className:'', html:`<div style="width:26px;height:26px;border-radius:50% 50% 50% 0; background:${color}; transform:rotate(-45deg); border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.35);"></div>`,
+    iconSize:[26,26], iconAnchor:[13,26], popupAnchor:[0,-24]
+  });
+}
+function activityIcon(){
+  return L.divIcon({
+    className:'', html:`<div style="width:26px;height:26px;border-radius:50%; background:#8b5cf6; border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.35); display:flex;align-items:center;justify-content:center; font-size:13px;">⚡</div>`,
+    iconSize:[26,26], iconAnchor:[13,13], popupAnchor:[0,-14]
+  });
+}
+let homeMarkers=[], fullMarkers=[];
+
+function initMaps(){
+  if(typeof L === 'undefined'){
+    document.getElementById('mapHome').innerHTML = '<div style="padding:24px;font-size:13px;color:#a00;">No se pudo cargar la librería del mapa (Leaflet). Verifica tu conexión a internet y recarga la página.</div>';
+    const mf = document.getElementById('mapFull');
+    if(mf) mf.innerHTML = '<div style="padding:24px;font-size:13px;color:#a00;">No se pudo cargar la librería del mapa (Leaflet). Verifica tu conexión a internet y recarga la página.</div>';
+    return;
+  }
+  mapHomeInstance = L.map('mapHome', {zoomControl:false}).setView(LEON, 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OpenStreetMap'}).addTo(mapHomeInstance);
+
+  mapFullInstance = L.map('mapFull').setView(LEON, 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OpenStreetMap'}).addTo(mapFullInstance);
+
+  refreshMarkers();
+
+  document.getElementById('locateHomeBtn').addEventListener('click', ()=>locateUser(mapHomeInstance));
+  document.getElementById('locateFullBtn').addEventListener('click', ()=>locateUser(mapFullInstance, document.getElementById('mapFullStatus')));
+}
+
+function popupHTML(r){
+  const u = usersDB[r.userId];
+  return `<div class="popup-title">Problema ambiental</div>
+    Tipo: ${r.type}<br>
+    Descripción: ${r.description}<br>
+    Estado: <span class="popup-status" style="color:${statusColor(r.status)}">${statusLabel(r.status)}</span><br>
+    Reportado por: ${u.name}<br>
+    Fecha: ${r.date}
+    <br><br><a href="#" class="ver-reporte-link" data-rid="${r.id}" style="color:var(--green); font-weight:700;">Ver reporte</a>`;
+}
+function activityPopupHTML(a){
+  return `<div class="popup-title">${a.name}</div>
+    ${a.description}<br>
+    📅 ${a.date} · 🕐 ${a.time}<br>
+    📍 ${a.place}<br>
+    Participantes: ${a.participants.length}`;
+}
+
+function refreshMarkers(){
+  [mapHomeInstance, mapFullInstance].forEach((map, idx)=>{
+    const arr = idx===0 ? homeMarkers : fullMarkers;
+    arr.forEach(m=>map.removeLayer(m));
+    arr.length=0;
+    reports.forEach(r=>{
+      const marker = L.marker([r.lat, r.lng], {icon:statusIcon(r.status)}).addTo(map);
+      marker.bindPopup(popupHTML(r));
+      marker.on('popupopen', ()=>{
+        setTimeout(()=>{
+          const link = document.querySelector('.ver-reporte-link');
+          if(link) link.addEventListener('click', (e)=>{ e.preventDefault(); switchView('reportes'); });
+        },50);
+      });
+      arr.push(marker);
+    });
+    activities.forEach(a=>{
+      const marker = L.marker([a.lat, a.lng], {icon:activityIcon()}).addTo(map);
+      marker.bindPopup(activityPopupHTML(a));
+      arr.push(marker);
+    });
+  });
+}
+function openReportPopupOnMap(map, r){
+  const m = fullMarkers.find(mk=>{ const ll=mk.getLatLng(); return Math.abs(ll.lat-r.lat)<0.0001 && Math.abs(ll.lng-r.lng)<0.0001; });
+  if(m) m.openPopup();
+}
+
+function locateUser(map, statusEl){
+  if(!navigator.geolocation){ toast('Tu navegador no soporta geolocalización'); return; }
+  toast('Obteniendo tu ubicación...');
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const {latitude, longitude} = pos.coords;
+    map.setView([latitude, longitude], 16);
+    const meIcon = L.divIcon({className:'', html:`<div style="width:20px;height:20px;border-radius:50%; background:#3fae29; border:3px solid #fff; box-shadow:0 0 0 6px rgba(63,174,41,0.3);"></div>`, iconSize:[20,20], iconAnchor:[10,10]});
+    L.marker([latitude, longitude], {icon:meIcon}).addTo(map).bindPopup('Tu ubicación actual').openPopup();
+    if(statusEl){ statusEl.style.display='block'; statusEl.textContent = `Tu ubicación actual: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`; }
+    toast('Ubicación encontrada');
+  }, err=>{
+    toast('No se pudo acceder a tu ubicación. Revisa los permisos del navegador.');
+  }, {enableHighAccuracy:true, timeout:10000});
+}
+
+/* ===================== INITIAL RENDER ===================== */
+renderPosts();
+renderComments(currentOpenPostId);
+renderReports();
+renderActivities();
+renderCommunity();
+document.getElementById('streakNum').textContent = streakDays;
+initMaps();
+</script>
+</body>
+</html>
