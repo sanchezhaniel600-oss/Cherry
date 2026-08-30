@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CHERRY | Registro</title>
+  <link rel="stylesheet" href="./register.css" />
+</head>
+<body>
+  <div class="login-shell">
+    <div class="brand-panel">
+      <div class="brand-inner">
+        <div class="brand-top">
+          <div class="brand-mark">
+            <img src="./Index/WhatsApp%20Image%202026-08-21%20at%208.04.36%20AM.jpeg" alt="Logo CHERRY" />
+          </div>
+          <div class="brand-name">CHERRY</div>
+        </div>
+
+        <h2 class="hero-title">Únete a la <span>comunidad</span> verde.</h2>
+        <p class="hero-copy">
+          Crea tu cuenta para reportar incidencias, participar en actividades y ayudar a cuidar a León de forma colaborativa.
+        </p>
+
+        <div class="feature-list">
+          <div class="feature-item"><div class="feature-icon">📍</div> Reporta zonas y problemas del barrio.</div>
+          <div class="feature-item"><div class="feature-icon">🤝</div> Conecta con vecinos y voluntarios.</div>
+          <div class="feature-item"><div class="feature-icon">🌱</div> Suma acciones para un entorno más limpio.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-panel">
+      <div class="form-card">
+        <div class="form-badge">Registro</div>
+        <h1>Crear cuenta</h1>
+        <div class="subtext">Completa tus datos para empezar a participar.</div>
+
+        <form id="registerForm">
+          <div class="field-row two-cols">
+            <div class="field">
+              <label for="name">Nombre</label>
+              <input id="name" type="text" placeholder="Tu nombre" required />
+            </div>
+            <div class="field">
+              <label for="lastName">Apellido</label>
+              <input id="lastName" type="text" placeholder="Tu apellido" required />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="email">Correo electrónico</label>
+            <input id="email" type="email" placeholder="usuario@correo.com" required />
+          </div>
+
+          <div class="field-row two-cols">
+            <div class="field">
+              <label for="password">Contraseña</label>
+              <input id="password" type="password" placeholder="••••••••" required />
+            </div>
+            <div class="field">
+              <label for="confirmPassword">Confirmar</label>
+              <input id="confirmPassword" type="password" placeholder="Repite la contraseña" required />
+            </div>
+          </div>
+
+          <div class="row">
+            <label class="check"><input type="checkbox" required /> Acepto los términos</label>
+          </div>
+
+          <button class="primary-btn" type="submit">Crear cuenta</button>
+
+          <div class="divider">o</div>
+
+          <div class="socials">
+            <button type="button" class="social-btn">Google</button>
+            <button type="button" class="social-btn">Apple</button>
+          </div>
+
+          <div class="signup">¿Ya tienes cuenta? <a href="./auth/login.html">Iniciar sesión</a></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getAuth, createUserWithEmailAndPassword, updateProfile } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+
+    const firebaseConfig = {
+      apiKey: 'AIzaSyCBwHrDgc6ffRx8ccpYsfz7XNAEOyuehAQ',
+      authDomain: 'cherry-9886f.firebaseapp.com',
+      projectId: 'cherry-9886f',
+      storageBucket: 'cherry-9886f.firebasestorage.app',
+      messagingSenderId: '294176754889',
+      appId: '1:294176754889:web:e9580434f97eef3d56d118',
+      measurementId: 'G-N0PK4K6L9Q'
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const form = document.getElementById('registerForm');
+
+    form?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const name = document.getElementById('name')?.value.trim();
+      const email = document.getElementById('email')?.value.trim();
+      const password = document.getElementById('password')?.value.trim();
+      const confirmPassword = document.getElementById('confirmPassword')?.value.trim();
+
+      if (!name || !email || !password || !confirmPassword) {
+        alert('Debes completar todos los campos.');
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        alert('Las contraseñas no coinciden.');
+        return;
+      }
+
+      if (password.length < 6) {
+        alert('La contraseña debe tener al menos 6 caracteres.');
+        return;
+      }
+
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        await updateProfile(user, { displayName: name });
+
+        sessionStorage.setItem('cherrySession', 'logged-in');
+        sessionStorage.setItem('cherryUserName', name);
+        sessionStorage.setItem('cherryUserEmail', user.email || '');
+
+        window.location.href = './Index/index.html';
+      } catch (error) {
+        const message = error && error.message ? error.message : 'No se pudo crear la cuenta.';
+        alert(message);
+      }
+    });
+  </script>
+</body>
+</html>

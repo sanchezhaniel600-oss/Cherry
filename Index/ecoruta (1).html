@@ -1,0 +1,2097 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHERRY</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<style>
+:root{
+  --green:#3fae29;
+  --green-dark:#2e8e1f;
+  --green-light:#eaf7e6;
+  --orange:#f5a623;
+  --purple:#8b5cf6;
+  --red:#e53935;
+  --amber:#fb8c00;
+  --bg:#eef1ee;
+  --card:#ffffff;
+  --text:#232323;
+  --text-soft:#7a7a7a;
+  --border:#e7e9e6;
+  --radius:18px;
+  --shadow:0 2px 14px rgba(20,30,20,0.07);
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased;}
+button{font-family:inherit; cursor:pointer; border:none; background:none;}
+input, textarea, select{font-family:inherit;}
+img{max-width:100%; display:block;}
+a{color:inherit; text-decoration:none;}
+.hidden{display:none !important;}
+
+/* ---------- TOP BAR ---------- */
+.topbar{
+  display:flex; align-items:center; gap:18px;
+  background:var(--card); padding:10px 22px;
+  box-shadow:var(--shadow); position:sticky; top:0; z-index:1000;
+  flex-wrap:nowrap;
+}
+.logo-wrap{display:flex; align-items:center; gap:10px; flex-shrink:0;}
+.logo-wrap svg{width:46px; height:46px;}
+.logo-text{display:none; font-weight:800; font-size:19px; color:var(--green-dark); letter-spacing:0.5px;}
+.search-box{
+  display:flex; align-items:center; gap:8px;
+  background:#eceeec; border-radius:24px; padding:9px 16px;
+  flex:0 0 240px; min-width:150px;
+}
+.search-box input{background:none; border:none; outline:none; width:100%; font-size:14px; color:#444;}
+.search-box svg{flex-shrink:0; color:#8a8a8a;}
+.navlinks{display:flex; gap:26px; flex:1; justify-content:center;}
+.navlink{
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  font-size:12.5px; color:#8b8b8b; font-weight:600; padding:4px 2px;
+  border-bottom:3px solid transparent;
+}
+.navlink svg{width:22px; height:22px;}
+.navlink.active{color:var(--green);}
+.navlink.active svg{color:var(--green);}
+.navlink:not(.active):hover{color:#555;}
+.bell-wrap{position:relative; flex-shrink:0; cursor:pointer;}
+.bell-wrap svg{width:24px; height:24px; color:#333;}
+.bell-badge{
+  position:absolute; top:-6px; right:-8px; background:var(--red); color:#fff;
+  font-size:10.5px; font-weight:700; border-radius:50%; min-width:17px; height:17px;
+  display:flex; align-items:center; justify-content:center; padding:0 3px;
+}
+.user-wrap{display:flex; align-items:center; gap:10px; flex-shrink:0; cursor:pointer;}
+.user-text{text-align:right; display:none;}
+.user-text .hello{font-weight:800; font-size:13px; color:var(--text);}
+.user-text .sub{font-size:11px; color:var(--text-soft); line-height:1.3;}
+.avatar-round{width:46px; height:46px; border-radius:50%; object-fit:cover; border:2px solid var(--green);}
+.avatar-round.sm{width:32px; height:32px;}
+.avatar-round.xs{width:26px; height:26px;}
+.avatar-initial{
+  display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800;
+  border:2px solid var(--green); flex-shrink:0;
+}
+.avatar-initial.avatar-round{font-size:18px;}
+.avatar-initial.sm{font-size:13px;}
+.avatar-initial.xs{font-size:10.5px;}
+
+
+@media(min-width:760px){
+  .logo-text{display:block;}
+  .search-box{flex:0 0 260px;}
+  .user-text{display:block;}
+}
+
+/* Notification dropdown */
+.dropdown{
+  position:absolute; top:64px; right:20px; width:320px; background:var(--card);
+  border-radius:16px; box-shadow:0 8px 30px rgba(0,0,0,0.18); z-index:2000; overflow:hidden;
+}
+.dropdown h4{padding:14px 16px; border-bottom:1px solid var(--border); font-size:15px;}
+.notif-item{padding:12px 16px; border-bottom:1px solid var(--border); font-size:13px; display:flex; gap:10px;}
+.notif-item:last-child{border-bottom:none;}
+.notif-item.unread{background:var(--green-light);}
+.notif-dot{width:8px; height:8px; border-radius:50%; background:var(--green); margin-top:5px; flex-shrink:0;}
+.notif-item .t{color:var(--text-soft); font-size:11px; margin-top:2px;}
+
+/* ---------- LAYOUT ---------- */
+.container{max-width:1400px; margin:0 auto; padding:18px;}
+.view{display:none;}
+.view.active{display:block;}
+
+.home-grid{
+  display:grid; grid-template-columns:1fr; gap:16px;
+}
+@media(min-width:1000px){
+  .home-grid{grid-template-columns:1.05fr 0.95fr 1.15fr; align-items:start;}
+}
+
+/* ---------- POST CARD ---------- */
+.card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px; margin-bottom:16px;}
+.post-head{display:flex; justify-content:space-between; align-items:flex-start;}
+.post-user{display:flex; gap:10px; align-items:center;}
+.post-user .pname{font-weight:800; font-size:15px;}
+.post-user .pmeta{font-size:12px; color:var(--text-soft);}
+.avatar-dotwrap{position:relative;}
+.online-dot{position:absolute; bottom:0; right:0; width:10px; height:10px; border-radius:50%; background:var(--green); border:2px solid #fff;}
+.menu-dots{font-size:20px; color:#999; padding:4px 8px; border-radius:50%;}
+.menu-dots:hover{background:#f0f0f0;}
+.meeting-box{text-align:right; font-size:12px; color:#444; line-height:1.6; font-weight:600;}
+.meeting-box .ver-mapa{color:var(--green); font-weight:800; cursor:pointer;}
+.post-desc{margin:12px 0; font-size:14.5px; line-height:1.4;}
+.post-photo{border-radius:14px; overflow:hidden; margin-bottom:12px; background:#ddd;}
+.post-photo img{width:100%; max-height:420px; object-fit:cover; display:block;}
+.post-actions{display:flex; align-items:center; gap:22px; padding:8px 0;}
+.action-btn{display:flex; align-items:center; gap:7px; font-size:13.5px; color:#555; font-weight:600;}
+.action-btn svg{width:20px; height:20px;}
+.action-btn.liked{color:var(--red);}
+.action-btn.liked svg{fill:var(--red); color:var(--red);}
+.join-row{display:flex; align-items:center; gap:12px; margin-top:14px;}
+.btn-join{
+  flex:1; background:var(--green); color:#fff; font-weight:800; font-size:14px;
+  padding:12px; border-radius:12px; text-align:center; letter-spacing:0.5px;
+  transition:background 0.15s;
+}
+.btn-join:hover{background:var(--green-dark);}
+.btn-join.joined{background:#bdbdbd;}
+.stack-avatars{display:flex; align-items:center;}
+.stack-avatars img, .stack-avatars .stack-initial{width:28px; height:28px; border-radius:50%; border:2px solid #fff; margin-left:-10px; object-fit:cover; flex-shrink:0;}
+.stack-avatars img:first-child, .stack-avatars .stack-initial:first-child{margin-left:0;}
+.stack-initial{display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:11px;}
+.stack-count{font-size:12px; color:var(--text-soft); margin-left:6px; font-weight:600;}
+
+/* ---------- COMMENTS ---------- */
+.comments-card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); display:flex; flex-direction:column; max-height:640px;}
+.comments-head{padding:16px 18px; font-weight:800; font-size:16px; border-bottom:1px solid var(--border);}
+.comments-list{overflow-y:auto; padding:14px 18px; flex:1;}
+.comment{margin-bottom:16px;}
+.comment-row{display:flex; gap:10px;}
+.comment-body{flex:1;}
+.comment-name{font-weight:700; font-size:13.5px;}
+.comment-time{font-size:11px; color:var(--text-soft); margin-left:4px; font-weight:400;}
+.comment-text{font-size:13.5px; margin-top:2px; line-height:1.35;}
+.comment-foot{display:flex; gap:16px; margin-top:4px; font-size:12px; color:var(--text-soft); font-weight:600;}
+.comment-foot span{cursor:pointer;}
+.comment-foot span:hover{color:var(--green);}
+.reply-list{margin-left:38px; margin-top:10px;}
+.reply-input-row{display:flex; gap:8px; margin-left:38px; margin-top:8px;}
+.reply-input-row input{flex:1; border:1px solid var(--border); border-radius:10px; padding:6px 10px; font-size:12.5px;}
+.comment-input-bar{display:flex; align-items:center; gap:10px; padding:14px 16px; border-top:1px solid var(--border);}
+.comment-input-bar input{flex:1; border:1px solid var(--border); background:#f6f7f5; border-radius:20px; padding:10px 16px; font-size:13.5px; outline:none;}
+.send-btn{width:38px; height:38px; border-radius:50%; background:var(--green); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+.send-btn:hover{background:var(--green-dark);}
+
+/* ---------- MAP CARD ---------- */
+.map-card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; position:relative;}
+.map-card .leaflet-container{height:420px; width:100%; border-radius:var(--radius);}
+.map-legend{
+  position:absolute; top:14px; left:14px; z-index:500;
+  background:rgba(232,245,229,0.95); border-radius:14px; padding:12px 14px;
+  box-shadow:0 2px 10px rgba(0,0,0,0.12); font-size:12.5px; max-width:230px;
+}
+.map-legend .lg-row{display:flex; align-items:center; gap:8px; margin-bottom:6px; font-weight:600;}
+.map-legend .dot{width:11px; height:11px; border-radius:50%; flex-shrink:0;}
+.map-legend .dot.red{background:var(--red);}
+.map-legend .dot.orange{background:var(--amber);}
+.map-legend .dot.green{background:var(--green);}
+.map-legend .lg-foot{display:flex; align-items:center; gap:8px; margin-top:8px; padding-top:8px; border-top:1px solid rgba(0,0,0,0.08);}
+.map-legend .lg-foot .trash-ic{width:26px; height:26px; border-radius:50%; background:#666; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+.map-legend .lg-foot .trash-ic svg{width:14px; height:14px; color:#fff;}
+.map-legend .lg-foot .txt{font-size:10.5px; color:#444; line-height:1.25;}
+.locate-btn{
+  position:absolute; bottom:14px; right:14px; z-index:500; background:#fff;
+  border-radius:24px; padding:9px 14px; font-size:12.5px; font-weight:700;
+  box-shadow:0 2px 10px rgba(0,0,0,0.18); display:flex; align-items:center; gap:6px;
+}
+.locate-btn:hover{background:#f2f2f2;}
+.map-status{position:absolute; bottom:14px; left:14px; z-index:500; background:#fff; border-radius:10px; padding:6px 10px; font-size:11px; box-shadow:0 2px 8px rgba(0,0,0,0.15); display:none;}
+
+/* ---------- BOTTOM BAR ---------- */
+.bottom-bar{
+  margin-top:16px; background:linear-gradient(90deg,var(--green) 0%, var(--green-dark) 100%);
+  border-radius:20px; display:flex; align-items:stretch; overflow:hidden; box-shadow:var(--shadow);
+  flex-wrap:wrap;
+}
+.bb-item{display:flex; align-items:center; gap:10px; padding:16px 20px; color:#fff; flex:1; min-width:150px; border-right:1px solid rgba(255,255,255,0.25);}
+.bb-item:last-child{border-right:none;}
+.bb-icon{width:42px; height:42px; border-radius:12px; background:rgba(255,255,255,0.18); display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+.bb-icon svg{width:22px; height:22px;}
+.bb-title{font-weight:800; font-size:15px;}
+.bb-sub{font-size:10.5px; opacity:0.85; line-height:1.2;}
+.bb-item.reportar{justify-content:center; font-weight:900; font-size:24px; letter-spacing:1px; flex:1.3; gap:14px;}
+.bb-item.reportar .cam-circ{width:46px; height:46px; border-radius:50%; background:rgba(255,255,255,0.22); display:flex; align-items:center; justify-content:center;}
+.bb-item{cursor:pointer;}
+.bb-item:hover{background:rgba(255,255,255,0.08);}
+
+/* ---------- GENERIC SECTION HEADER ---------- */
+.section-title{font-size:22px; font-weight:800; margin-bottom:14px; display:flex; align-items:center; justify-content:space-between;}
+.section-title .add-btn{background:var(--green); color:#fff; font-size:13px; font-weight:700; padding:9px 16px; border-radius:10px;}
+
+/* ---------- REPORTS LIST ---------- */
+.reports-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px;}
+.report-card{background:var(--card); border-radius:16px; box-shadow:var(--shadow); overflow:hidden;}
+.report-card img{width:100%; height:150px; object-fit:cover;}
+.report-body{padding:14px;}
+.status-pill{display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:800; padding:4px 10px; border-radius:20px; margin-bottom:8px;}
+.status-pill.reportado{background:#fdecea; color:var(--red);}
+.status-pill.proceso{background:#fff4e5; color:var(--amber);}
+.status-pill.solucionado{background:var(--green-light); color:var(--green-dark);}
+.report-type{font-weight:800; font-size:14.5px; margin-bottom:4px;}
+.report-desc{font-size:13px; color:#555; margin-bottom:8px;}
+.report-meta{font-size:11.5px; color:var(--text-soft); margin-bottom:10px; line-height:1.5;}
+.report-actions{display:flex; gap:8px;}
+.mini-btn{flex:1; text-align:center; padding:8px; border-radius:8px; font-size:12px; font-weight:700; background:#f1f2f0;}
+.mini-btn.primary{background:var(--green); color:#fff;}
+.status-select{width:100%; margin-top:8px; padding:7px; border-radius:8px; border:1px solid var(--border); font-size:12px;}
+
+/* ---------- ACTIVITIES ---------- */
+.activities-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px;}
+.activity-card{background:var(--card); border-radius:16px; box-shadow:var(--shadow); overflow:hidden;}
+.activity-card img{width:100%; height:150px; object-fit:cover;}
+.activity-body{padding:14px;}
+.activity-title{font-weight:800; font-size:15.5px; margin-bottom:4px;}
+.activity-desc{font-size:13px; color:#555; margin-bottom:8px;}
+.activity-meta{font-size:12px; color:var(--text-soft); margin-bottom:10px; line-height:1.6;}
+.activity-meta b{color:var(--text);}
+.activity-foot{display:flex; align-items:center; justify-content:space-between;}
+.participants-txt{font-size:12px; color:var(--text-soft); font-weight:600;}
+
+/* ---------- STATS / PROFILE MODALS ---------- */
+.overlay{position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:3000; display:flex; align-items:center; justify-content:center; padding:16px;}
+.modal{background:#fff; border-radius:20px; width:100%; max-width:480px; max-height:88vh; overflow-y:auto; padding:24px; position:relative;}
+.modal-close{position:absolute; top:16px; right:16px; font-size:22px; color:#888; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center;}
+.modal-close:hover{background:#f0f0f0;}
+.modal h2{font-size:20px; font-weight:800; margin-bottom:18px;}
+.stats-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+.stat-box{background:var(--green-light); border-radius:14px; padding:16px; text-align:center;}
+.stat-box .num{font-size:26px; font-weight:900; color:var(--green-dark);}
+.stat-box .lbl{font-size:12px; color:#555; font-weight:600; margin-top:2px;}
+
+/* ---------- REPORT FORM ---------- */
+.form-field{margin-bottom:14px;}
+.form-field label{display:block; font-size:12.5px; font-weight:700; margin-bottom:6px; color:#444;}
+.form-field input[type=text], .form-field textarea, .form-field select{
+  width:100%; border:1px solid var(--border); border-radius:10px; padding:10px 12px; font-size:13.5px; outline:none;
+}
+.form-field textarea{resize:vertical; min-height:70px;}
+.photo-btns{display:flex; gap:10px;}
+.photo-btn{flex:1; border:1.5px dashed #bbb; border-radius:12px; padding:16px; text-align:center; font-size:12.5px; font-weight:700; color:#666;}
+.photo-btn:hover{border-color:var(--green); color:var(--green);}
+.photo-preview{width:100%; height:150px; object-fit:cover; border-radius:12px; margin-top:10px;}
+.mini-map{height:180px; border-radius:12px; margin-top:8px;}
+.gps-status{font-size:12px; color:var(--green-dark); margin-top:6px; font-weight:600;}
+.btn-submit{width:100%; background:var(--green); color:#fff; font-weight:800; padding:13px; border-radius:12px; font-size:14.5px; margin-top:6px;}
+.btn-submit:hover{background:var(--green-dark);}
+.type-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+.type-opt{border:1.5px solid var(--border); border-radius:10px; padding:9px; text-align:center; font-size:12px; font-weight:700; color:#555;}
+.type-opt.sel{border-color:var(--green); background:var(--green-light); color:var(--green-dark);}
+
+/* ---------- PROFILE ---------- */
+.profile-head{display:flex; flex-direction:column; align-items:center; text-align:center; margin-bottom:18px;}
+.profile-head img{width:88px; height:88px; border-radius:50%; margin-bottom:10px; border:3px solid var(--green);}
+.profile-avatar-big{width:88px; height:88px; margin-bottom:10px; border:3px solid var(--green); font-size:32px;}
+.profile-head h3{font-size:19px; font-weight:800;}
+.profile-head p{font-size:13px; color:var(--text-soft); margin-top:4px;}
+.edit-btn{margin-top:10px; background:var(--green-light); color:var(--green-dark); font-weight:700; font-size:12.5px; padding:8px 16px; border-radius:10px;}
+
+/* toast */
+.toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#222; color:#fff; padding:12px 22px; border-radius:30px; font-size:13.5px; z-index:5000; box-shadow:0 4px 20px rgba(0,0,0,0.3); opacity:0; transition:opacity 0.25s;}
+.toast.show{opacity:1;}
+
+.leaflet-popup-content{font-size:12.5px; line-height:1.5;}
+.popup-title{font-weight:800; margin-bottom:4px;}
+.popup-status{font-weight:700;}
+
+/* ================= REPORTES (página completa) ================= */
+.reportes-layout{display:grid; grid-template-columns:330px 1fr; gap:20px; align-items:start;}
+@media(max-width:900px){ .reportes-layout{grid-template-columns:1fr;} }
+.reportes-side h1{font-size:30px; font-weight:900; margin-bottom:8px; line-height:1.1;}
+.reportes-side .desc{font-size:13.5px; color:var(--text-soft); margin-bottom:16px; line-height:1.5;}
+.btn-new-report{width:100%; background:var(--green); color:#fff; font-weight:800; padding:13px; border-radius:14px; font-size:14px; margin-bottom:18px; display:flex; align-items:center; justify-content:center; gap:8px;}
+.btn-new-report:hover{background:var(--green-dark);}
+.quick-report-card{background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:16px;}
+.quick-photo-box{border:1.5px dashed #bbb; border-radius:12px; padding:14px; text-align:center; color:#888; font-size:12.5px; font-weight:600; margin-bottom:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;}
+.quick-photo-box:hover{border-color:var(--green); color:var(--green);}
+.quick-photo-box img{max-height:60px; border-radius:8px;}
+.quick-field{margin-bottom:12px;}
+.quick-field label{display:block; font-size:10.5px; font-weight:700; color:#999; margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px;}
+.quick-field input, .quick-field textarea{width:100%; border:1px solid var(--border); background:#f7f8f6; border-radius:10px; padding:9px 12px; font-size:13px; outline:none;}
+.quick-field textarea{min-height:75px; resize:vertical;}
+.quick-time-row{display:flex; gap:6px; align-items:center;}
+.quick-time-row input{text-align:center;}
+
+.filter-tabs{display:flex; gap:10px; flex-wrap:wrap; background:var(--card); padding:8px; border-radius:16px; box-shadow:var(--shadow); margin-bottom:18px;}
+.filter-tab{padding:10px 18px; border-radius:12px; font-size:13.5px; font-weight:700; color:#555; display:flex; align-items:center; gap:7px;}
+.filter-tab.active{background:var(--green); color:#fff;}
+.filter-tab .warn{width:16px; height:16px; border-radius:50%; background:var(--amber); color:#fff; font-size:10px; display:flex; align-items:center; justify-content:center; font-weight:900; flex-shrink:0;}
+.filter-tab.active .warn{background:rgba(255,255,255,0.35);}
+
+.report-row-card{display:flex; gap:14px; background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:14px; margin-bottom:14px; align-items:stretch;}
+.report-row-photo{width:120px; height:130px; border-radius:14px; overflow:hidden; flex-shrink:0; background:#ddd;}
+.report-row-photo img{width:100%; height:100%; object-fit:cover;}
+.report-row-body{flex:1; min-width:0;}
+.report-row-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
+.report-row-title{font-weight:800; font-size:16px; margin-bottom:2px;}
+.report-row-loc{font-size:12px; color:var(--text-soft); display:flex; align-items:center; gap:4px; margin-bottom:6px;}
+.report-row-desc{font-size:13px; color:#444; margin-bottom:10px; line-height:1.4;}
+.report-row-meta{display:flex; gap:16px; font-size:12px; color:var(--text-soft); font-weight:600; flex-wrap:wrap;}
+.report-row-meta span{display:flex; align-items:center; gap:5px;}
+.report-row-map{width:150px; flex-shrink:0; border-radius:14px; overflow:hidden; position:relative; display:flex; flex-direction:column;}
+.mini-static-map{height:88px; width:100%; position:relative; overflow:hidden; background:linear-gradient(135deg,#e3f3e2,#eef1ee); flex-shrink:0;}
+.mini-static-map svg{position:absolute; inset:0; width:100%; height:100%; opacity:0.4;}
+.mini-static-map .pin{position:absolute; top:48%; left:50%; transform:translate(-50%,-100%); width:22px; height:22px; border-radius:50% 50% 50% 0; border:2px solid #fff; box-shadow:0 2px 5px rgba(0,0,0,0.3); transform-origin:center;}
+.map-status-chip{position:absolute; top:6px; left:6px; z-index:5; font-size:9px; font-weight:800; padding:3px 8px; border-radius:20px; color:#fff; display:flex; align-items:center; gap:3px;}
+.map-status-chip.reportado{background:var(--red);}
+.map-status-chip.proceso{background:var(--amber);}
+.map-status-chip.solucionado{background:var(--green);}
+.anon-box{font-size:9px; font-weight:700; padding:7px 6px; text-align:center; border-radius:0 0 14px 14px; line-height:1.3;}
+.anon-box.reportado{background:#fdecea; color:#c0392b;}
+.anon-box.proceso{background:#fff4e5; color:#a15c00;}
+.anon-box.solucionado{background:var(--green-light); color:var(--green-dark);}
+.ver-mapa-tag{display:flex; align-items:center; justify-content:center; gap:4px; font-size:9.5px; font-weight:800; margin-top:2px;}
+
+.pagination-bar{display:flex; align-items:center; justify-content:center; gap:8px; margin-top:20px; flex-wrap:wrap;}
+.page-btn{padding:9px 15px; border-radius:12px; background:var(--card); box-shadow:var(--shadow); font-size:13px; font-weight:700; color:#555; display:flex; align-items:center; gap:4px;}
+.page-btn.active{background:var(--green); color:#fff;}
+.page-btn.navbtn{background:transparent; box-shadow:none; color:#888;}
+.page-dots{color:#999; font-weight:700; padding:0 4px;}
+
+/* ================= MAPA (tarjeta de detalle flotante) ================= */
+.map-floating-report{
+  position:absolute; bottom:16px; left:16px; right:16px; z-index:600;
+  background:var(--card); border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,0.25);
+  display:flex; gap:14px; padding:14px; border:2px solid var(--green);
+  max-width:900px;
+}
+.map-floating-report .mfr-photo{width:140px; height:130px; border-radius:14px; overflow:hidden; flex-shrink:0; position:relative;}
+.map-floating-report .mfr-photo img{width:100%; height:100%; object-fit:cover;}
+.map-floating-report .mfr-chip{position:absolute; top:8px; left:8px; font-size:10px; font-weight:800; padding:4px 10px; border-radius:20px; color:#fff;}
+.map-floating-report .mfr-body{flex:1; min-width:0;}
+.map-floating-report .mfr-title{font-weight:900; font-size:19px; margin-bottom:4px;}
+.map-floating-report .mfr-desc{font-size:13.5px; color:#444; margin-bottom:8px; line-height:1.35;}
+.map-floating-report .mfr-meta{display:flex; gap:16px; font-size:12.5px; color:var(--text-soft); font-weight:700;}
+.map-floating-report .mfr-meta span{display:flex; align-items:center; gap:5px;}
+.map-floating-report .mfr-side{text-align:right; font-size:11.5px; font-weight:700; color:#444; line-height:1.7; flex-shrink:0; min-width:180px;}
+.map-floating-report .mfr-side .ver-mapa{color:var(--green); font-weight:800; cursor:pointer;}
+.map-floating-report .mfr-close{position:absolute; top:10px; right:10px; width:26px; height:26px; border-radius:50%; background:#f0f0f0; display:flex; align-items:center; justify-content:center; font-size:16px; color:#888;}
+.map-mini-actions{position:absolute; top:14px; left:14px; z-index:500; display:flex; flex-direction:column; gap:10px; margin-top:210px;}
+.map-mini-btn{background:var(--card); border-radius:14px; padding:10px 12px; box-shadow:0 2px 10px rgba(0,0,0,0.15); display:flex; align-items:center; gap:8px; font-weight:800; font-size:13px;}
+.map-mini-btn .mmb-icon{width:30px; height:30px; border-radius:9px; background:var(--green-light); display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+.map-reportar-float{position:absolute; top:14px; right:14px; z-index:600; background:var(--green); color:#fff; font-weight:900; font-size:18px; letter-spacing:0.5px; padding:14px 22px; border-radius:16px; display:flex; align-items:center; gap:12px; box-shadow:0 6px 20px rgba(63,174,41,0.4);}
+.map-reportar-float:hover{background:var(--green-dark);}
+.map-reportar-float .cam-circ{width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center;}
+@media(max-width:759px){
+  .map-reportar-float{font-size:13px; padding:10px 14px;}
+  .map-mini-actions{margin-top:120px;}
+  .map-floating-report{flex-direction:column;}
+  .map-floating-report .mfr-side{text-align:left;}
+}
+
+/* ================= PROFILE DROPDOWN (tarjeta al hacer clic en avatar) ================= */
+.profile-dropdown{
+  position:absolute; top:64px; right:20px; width:300px; background:var(--card);
+  border-radius:20px; box-shadow:0 10px 34px rgba(0,0,0,0.2); z-index:2000; overflow:hidden;
+}
+.pd-head{padding:20px; text-align:left; cursor:pointer;}
+.pd-head:hover{background:#f7f8f6;}
+.pd-head .pd-toprow{display:flex; align-items:flex-start; justify-content:space-between;}
+.pd-head .pd-name{font-weight:900; font-size:16px; margin-top:10px;}
+.pd-head .pd-loc{font-size:12px; color:var(--text-soft); display:flex; align-items:center; gap:4px; margin-top:2px;}
+.pd-level-badge{width:52px; height:52px; border-radius:14px; background:var(--amber); color:#fff; font-weight:900; font-size:22px; display:flex; align-items:center; justify-content:center; position:relative;}
+.pd-active-chip{display:inline-block; margin-top:8px; background:var(--green-light); color:var(--green-dark); font-size:11px; font-weight:800; padding:4px 10px; border-radius:20px;}
+.pd-menu{border-top:1px solid var(--border);}
+.pd-menu-item{padding:13px 20px; display:flex; align-items:center; justify-content:space-between; font-size:13.5px; font-weight:700; color:#333;}
+.pd-menu-item:hover{background:#f7f8f6;}
+.pd-menu-item svg{width:17px; height:17px; color:#888;}
+.pd-menu-item.danger{color:var(--red);}
+
+/* ================= PERFIL (página completa) ================= */
+.perfil-layout{display:grid; grid-template-columns:250px 1fr; gap:20px; align-items:start;}
+@media(max-width:900px){ .perfil-layout{grid-template-columns:1fr;} }
+.perfil-sidebar{background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:10px; position:sticky; top:82px;}
+.perfil-sidebar .psl-item{display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:12px; font-size:13.5px; font-weight:700; color:#555;}
+.perfil-sidebar .psl-item svg{width:18px; height:18px; flex-shrink:0;}
+.perfil-sidebar .psl-item.active{background:var(--green-light); color:var(--green-dark);}
+.perfil-sidebar .psl-item:not(.active):hover{background:#f5f6f4;}
+.perfil-sidebar .psl-item.danger{color:var(--red);}
+.perfil-banner{background:linear-gradient(120deg,#eaf7e6 0%,#f3faf1 60%); border-radius:20px; box-shadow:var(--shadow); padding:26px; display:flex; justify-content:space-between; gap:20px; position:relative; overflow:hidden; flex-wrap:wrap;}
+.perfil-banner-left{display:flex; gap:18px; align-items:center; z-index:2;}
+.perfil-avatar-wrap{position:relative; flex-shrink:0;}
+.perfil-avatar-wrap .cam-edit{position:absolute; bottom:0; right:0; width:26px; height:26px; border-radius:50%; background:var(--green); display:flex; align-items:center; justify-content:center; border:2px solid #fff;}
+.perfil-avatar-wrap .cam-edit svg{width:13px; height:13px; color:#fff;}
+.perfil-name{font-size:23px; font-weight:900;}
+.perfil-loc{font-size:12.5px; color:var(--text-soft); display:flex; align-items:center; gap:4px; margin:4px 0 8px;}
+.perfil-bio{font-size:13px; color:#444; max-width:340px; line-height:1.4; margin-bottom:10px;}
+.perfil-edit-btn{background:#fff; border:1px solid var(--border); font-weight:700; font-size:12.5px; padding:9px 18px; border-radius:10px;}
+.perfil-edit-btn:hover{background:#f5f6f4;}
+.perfil-level-card{background:#fff; border-radius:16px; padding:16px 20px; z-index:2; min-width:220px; box-shadow:0 2px 10px rgba(0,0,0,0.06);}
+.perfil-level-card .lvl-label{font-size:11px; color:var(--text-soft); font-weight:700; margin-bottom:6px;}
+.perfil-level-card .lvl-name{display:flex; align-items:center; gap:8px; font-weight:900; font-size:15.5px; color:var(--green-dark); margin-bottom:8px;}
+.lvl-progress-track{height:8px; background:#e6ede4; border-radius:6px; overflow:hidden; margin-bottom:6px;}
+.lvl-progress-fill{height:100%; background:var(--green); border-radius:6px;}
+.lvl-progress-txt{font-size:11.5px; color:var(--text-soft); font-weight:700;}
+.perfil-decor{position:absolute; bottom:-10px; right:100px; font-size:70px; opacity:0.5; z-index:1;}
+
+.logros-card{background:var(--card); border-radius:20px; box-shadow:var(--shadow); padding:18px;}
+.logros-card .logros-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;}
+.logros-card .logros-head h4{font-size:15px; font-weight:800;}
+.logros-card .see-all{font-size:12px; color:var(--green); font-weight:700;}
+.logro-item{display:flex; gap:12px; align-items:flex-start; margin-bottom:14px;}
+.logro-icon{width:38px; height:38px; border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:18px;}
+.logro-item .lg-title{font-weight:800; font-size:13px;}
+.logro-item .lg-sub{font-size:11.5px; color:var(--text-soft);}
+.logro-item .lg-date{font-size:10.5px; color:#aaa; margin-top:2px;}
+
+.perfil-stats-row{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin:20px 0;}
+.pstat-card{background:var(--card); border-radius:16px; box-shadow:var(--shadow); padding:16px; display:flex; gap:12px; align-items:center;}
+.pstat-icon{width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0;}
+.pstat-num{font-size:20px; font-weight:900;}
+.pstat-lbl{font-size:11.5px; color:var(--text-soft); font-weight:600;}
+.pstat-delta{font-size:10.5px; color:var(--green-dark); font-weight:800;}
+
+.perfil-two-col{display:grid; grid-template-columns:1.3fr 1fr; gap:16px;}
+@media(max-width:900px){ .perfil-two-col{grid-template-columns:1fr;} }
+.actividad-card{background:var(--card); border-radius:20px; box-shadow:var(--shadow); padding:18px;}
+.actividad-card .ac-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;}
+.actividad-card .ac-head h4{font-size:15px; font-weight:800;}
+.ai-row{display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border);}
+.ai-row:last-child{border-bottom:none;}
+.ai-icon{width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;}
+.ai-body{flex:1; min-width:0;}
+.ai-title{font-weight:800; font-size:13px;}
+.ai-sub{font-size:11.5px; color:var(--text-soft);}
+.ai-thumb{width:44px; height:44px; border-radius:10px; object-fit:cover; flex-shrink:0;}
+.ai-chevron{color:#bbb; flex-shrink:0;}
+
+.impacto-card{background:var(--card); border-radius:20px; box-shadow:var(--shadow); padding:18px;}
+.impacto-card .ac-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;}
+.donut-wrap{display:flex; align-items:center; gap:18px; flex-wrap:wrap; justify-content:center;}
+.donut{width:130px; height:130px; border-radius:50%; position:relative; flex-shrink:0;}
+.donut::after{content:''; position:absolute; inset:20px; background:#fff; border-radius:50%; display:flex;}
+.donut-center{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; text-align:center; padding:20px;}
+.donut-center .leaf{font-size:20px;}
+.donut-center .txt{font-size:9.5px; color:var(--text-soft); font-weight:700; line-height:1.2; margin-top:2px;}
+.donut-legend{flex:1; min-width:140px;}
+.dl-row{display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; margin-bottom:8px;}
+.dl-dot{width:10px; height:10px; border-radius:50%; flex-shrink:0;}
+.dl-pct{margin-left:auto; color:var(--text-soft); font-weight:800;}
+.impacto-msg{background:var(--green-light); border-radius:12px; padding:12px 14px; font-size:12px; color:var(--green-dark); font-weight:700; margin-top:14px;}
+
+.niveles-card{background:var(--card); border-radius:20px; box-shadow:var(--shadow); padding:20px; margin-top:16px;}
+.niveles-row{display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+.nivel-item{flex:1; min-width:90px; text-align:center;}
+.nivel-badge{width:52px; height:52px; border-radius:14px; margin:0 auto 8px; display:flex; align-items:center; justify-content:center; font-size:22px; position:relative;}
+.nivel-badge.done{background:var(--green-light); color:var(--green-dark);}
+.nivel-badge.current{background:var(--green); color:#fff; box-shadow:0 0 0 5px var(--green-light);}
+.nivel-badge.locked{background:#f0f1ef; color:#bbb;}
+.nivel-name{font-size:11.5px; font-weight:800;}
+.nivel-status{font-size:10px; color:var(--text-soft); font-weight:700;}
+.nivel-status.current-txt{color:var(--green-dark);}
+.niveles-footer{text-align:center; margin-top:16px; font-size:12.5px; color:var(--text-soft); font-weight:600;}
+
+/* ================= COMUNIDAD (página completa) ================= */
+.comunidad-layout{display:grid; grid-template-columns:250px 1fr 300px; gap:18px; align-items:start;}
+@media(max-width:1150px){ .comunidad-layout{grid-template-columns:220px 1fr;} .comunidad-right{display:none;} }
+@media(max-width:760px){ .comunidad-layout{grid-template-columns:1fr;} .comunidad-side{display:none;} }
+.comunidad-side{background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:18px; position:sticky; top:82px;}
+.comunidad-side h2{font-size:19px; font-weight:900; margin:8px 0 6px;}
+.comunidad-side .desc{font-size:12.5px; color:var(--text-soft); line-height:1.4; margin-bottom:14px;}
+.btn-join-group{width:100%; background:var(--green); color:#fff; font-weight:800; padding:11px; border-radius:12px; font-size:13px; margin-bottom:16px; display:flex; align-items:center; justify-content:center; gap:8px;}
+.comunidad-side .cs-nav-item{display:flex; align-items:center; gap:10px; padding:10px 8px; border-radius:10px; font-size:13px; font-weight:700; color:#555;}
+.comunidad-side .cs-nav-item.active{background:var(--green-light); color:var(--green-dark);}
+.comunidad-side .cs-nav-item:not(.active):hover{background:#f5f6f4;}
+.destacadas-card{margin-top:18px; padding-top:16px; border-top:1px solid var(--border);}
+.destacadas-card h5{font-size:12px; font-weight:800; color:#888; margin-bottom:10px; display:flex; align-items:center; gap:6px;}
+.dest-row{display:flex; align-items:center; gap:10px; margin-bottom:12px;}
+.dest-row .dr-info{flex:1; min-width:0;}
+.dest-row .dr-name{font-size:12.5px; font-weight:700;}
+.dest-row .dr-count{font-size:10.5px; color:var(--text-soft);}
+.dest-row .dr-join{font-size:11px; font-weight:800; color:var(--green-dark); background:var(--green-light); padding:5px 12px; border-radius:16px; flex-shrink:0;}
+
+.comunidad-banner{background:linear-gradient(120deg,#eaf7e6,#f3faf1); border-radius:20px; padding:24px; display:flex; justify-content:space-between; align-items:center; gap:16px; box-shadow:var(--shadow); flex-wrap:wrap;}
+.comunidad-banner h2{font-size:22px; font-weight:900; margin-bottom:6px;}
+.comunidad-banner p{font-size:13px; color:#444; max-width:360px; line-height:1.4;}
+.comunidad-banner .cb-illus{font-size:52px; flex-shrink:0;}
+
+.composer-card{background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:16px; margin:16px 0;}
+.composer-top{display:flex; gap:12px; align-items:center;}
+.composer-top input{flex:1; border:1px solid var(--border); background:#f7f8f6; border-radius:20px; padding:11px 16px; font-size:13.5px; outline:none;}
+.composer-actions{display:flex; justify-content:space-between; align-items:center; margin-top:12px; flex-wrap:wrap; gap:10px;}
+.composer-tools{display:flex; gap:16px;}
+.composer-tools span{display:flex; align-items:center; gap:6px; font-size:12.5px; font-weight:700; color:#666;}
+.composer-tools span:hover{color:var(--green);}
+.btn-publicar{background:var(--green); color:#fff; font-weight:800; padding:9px 22px; border-radius:12px; font-size:13px;}
+.btn-publicar:hover{background:var(--green-dark);}
+
+.comm-filter-row{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:10px;}
+.comm-filter-tabs{display:flex; gap:8px; flex-wrap:wrap;}
+.comm-filter-tabs .filter-tab{padding:8px 16px; background:var(--card); box-shadow:var(--shadow); font-size:12.5px;}
+.comm-filter-tabs .filter-tab.active{background:var(--green); color:#fff; box-shadow:none;}
+.sort-select{border:1px solid var(--border); border-radius:10px; padding:8px 12px; font-size:12.5px; font-weight:700; color:#555; background:#fff;}
+
+.comm-post-card{background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:16px; margin-bottom:16px;}
+.comm-post-top{display:flex; justify-content:space-between; align-items:flex-start;}
+.comm-post-user{display:flex; gap:10px;}
+.comm-post-name{font-weight:800; font-size:14.5px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;}
+.comm-group-tag{font-size:10.5px; font-weight:700; color:var(--green-dark); background:var(--green-light); padding:2px 8px; border-radius:10px; display:inline-flex; align-items:center; gap:3px;}
+.comm-post-time{font-size:11.5px; color:var(--text-soft); margin-top:1px;}
+.comm-post-text{font-size:13.5px; margin:10px 0; line-height:1.4;}
+.comm-photo-grid{display:grid; gap:6px; margin-bottom:10px; border-radius:12px; overflow:hidden;}
+.comm-photo-grid.n1{grid-template-columns:1fr;}
+.comm-photo-grid.n2{grid-template-columns:1fr 1fr;}
+.comm-photo-grid.n3{grid-template-columns:1fr 1fr 1fr;}
+.comm-photo-grid img{width:100%; height:150px; object-fit:cover; display:block;}
+.comm-post-actions{display:flex; gap:22px; padding-top:8px; border-top:1px solid var(--border); margin-top:4px;}
+.load-more-btn{width:100%; background:var(--card); box-shadow:var(--shadow); border-radius:14px; padding:13px; text-align:center; font-weight:700; font-size:13px; color:#555;}
+.load-more-btn:hover{background:#f5f6f4;}
+
+.comunidad-right .right-card{background:var(--card); border-radius:18px; box-shadow:var(--shadow); padding:16px; margin-bottom:16px;}
+.right-card h4{font-size:14px; font-weight:800; margin-bottom:12px;}
+.rc-stats-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.rc-stat{display:flex; gap:8px; align-items:flex-start;}
+.rc-stat-icon{width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0;}
+.rc-stat-num{font-size:16px; font-weight:900;}
+.rc-stat-lbl{font-size:10px; color:var(--text-soft); font-weight:600;}
+.rc-stat-delta{font-size:9.5px; color:var(--green-dark); font-weight:800;}
+.see-all-link{font-size:11.5px; color:var(--green); font-weight:700; display:block; text-align:center; margin-top:10px;}
+.upcoming-row{display:flex; gap:10px; margin-bottom:12px; align-items:center;}
+.date-badge{width:44px; height:44px; border-radius:10px; background:var(--green-light); color:var(--green-dark); display:flex; flex-direction:column; align-items:center; justify-content:center; flex-shrink:0;}
+.date-badge .dnum{font-size:15px; font-weight:900; line-height:1;}
+.date-badge .dmon{font-size:9px; font-weight:800; text-transform:uppercase;}
+.upcoming-body{flex:1; min-width:0;}
+.up-title{font-weight:800; font-size:12.5px;}
+.up-sub{font-size:11px; color:var(--text-soft);}
+.up-count{font-size:10.5px; color:var(--green-dark); font-weight:800; text-align:right; flex-shrink:0;}
+.member-rank-row{display:flex; align-items:center; gap:10px; margin-bottom:12px;}
+.rank-circle{width:22px; height:22px; border-radius:50%; background:#f0f1ef; color:#888; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+.rank-circle.top1{background:#f5c518; color:#fff;}
+.rank-circle.top2{background:#c0c0c0; color:#fff;}
+.rank-circle.top3{background:#cd7f32; color:#fff;}
+.mr-info{flex:1; min-width:0;}
+.mr-name{font-size:12.5px; font-weight:700;}
+.mr-pts{font-size:11px; color:var(--text-soft);}
+
+@media(max-width:759px){
+  .search-box{order:3; flex:1 1 100%; margin-top:8px;}
+  .topbar{flex-wrap:wrap;}
+  .navlinks{gap:14px; order:2;}
+  .navlink span{display:none;}
+  .navlink{font-size:0;}
+  .navlink svg{width:24px; height:24px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<div class="topbar">
+  <div class="logo-wrap" id="logoHome">
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <g>
+        <ellipse cx="50" cy="22" rx="12" ry="18" fill="#8b5cf6"/>
+        <ellipse cx="50" cy="78" rx="12" ry="18" fill="#22c55e"/>
+        <ellipse cx="22" cy="50" rx="18" ry="12" fill="#f5a623"/>
+        <ellipse cx="78" cy="50" rx="18" ry="12" fill="#3fae29"/>
+        <ellipse cx="30" cy="30" rx="12" ry="17" fill="#f59e0b" transform="rotate(-45 30 30)"/>
+        <ellipse cx="70" cy="70" rx="12" ry="17" fill="#16a34a" transform="rotate(-45 70 70)"/>
+        <ellipse cx="70" cy="30" rx="12" ry="17" fill="#f97316" transform="rotate(45 70 30)"/>
+        <ellipse cx="30" cy="70" rx="12" ry="17" fill="#65a30d" transform="rotate(45 30 70)"/>
+        <circle cx="50" cy="50" r="15" fill="#f5a623"/>
+      </g>
+    </svg>
+    <div class="logo-text">CHERRY</div>
+  </div>
+
+  <div class="search-box">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="searchInput" placeholder="Buscar">
+  </div>
+
+  <div class="navlinks">
+    <div class="navlink active" data-view="inicio">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+      <span>Inicio</span>
+    </div>
+    <div class="navlink" data-view="mapa">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/></svg>
+      <span>Mapa</span>
+    </div>
+    <div class="navlink" data-view="reportes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6v4H9z"/><path d="M6 4h12v18H6z"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      <span>Reportes</span>
+    </div>
+    <div class="navlink" data-view="comunidad">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Comunidad</span>
+    </div>
+    <div class="navlink" data-view="actividades">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      <span>Actividades</span>
+    </div>
+  </div>
+
+  <div class="bell-wrap" id="bellBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <div class="bell-badge" id="bellBadge">3</div>
+  </div>
+
+  <div class="user-wrap" id="profileBtn">
+    <div class="user-text">
+      <div class="hello" id="helloText">¡HOLA JUNIOR PARRA!</div>
+      <div class="sub">Hoy puedes ayudar a que<br>León sea un poco más limpio</div>
+    </div>
+    <div id="topUserAvatarWrap"></div>
+  </div>
+</div>
+
+<div id="notifDropdown" class="dropdown hidden">
+  <h4>Notificaciones</h4>
+  <div id="notifList"></div>
+</div>
+
+<div id="profileDropdown" class="profile-dropdown hidden"></div>
+
+<!-- ============ MAIN CONTAINER ============ -->
+<div class="container">
+
+  <!-- ---------------- INICIO ---------------- -->
+  <div class="view active" id="view-inicio">
+    <div class="home-grid">
+      <div id="postsCol"></div>
+      <div id="commentsCol"></div>
+      <div>
+        <div class="map-card">
+          <div class="map-legend">
+            <div class="lg-row"><span class="dot red"></span> Problemas reportados</div>
+            <div class="lg-row"><span class="dot orange"></span> Problemas en proceso</div>
+            <div class="lg-row"><span class="dot green"></span> Problemas solucionados</div>
+            <div class="lg-foot">
+              <div class="trash-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></div>
+              <div class="txt">Este ícono representa todos los lugares donde puedas botar tu basura</div>
+            </div>
+          </div>
+          <div id="mapHome"></div>
+          <div class="locate-btn" id="locateHomeBtn">📍 Mi ubicación</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="bb-item" id="statsBtn">
+        <div class="bb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+        <div>
+          <div class="bb-title">Estadísticas</div>
+          <div class="bb-sub">Observar mi rendimiento y el estado de mi ciudad ></div>
+        </div>
+      </div>
+      <div class="bb-item" id="streakBtn" style="flex:0.6;">
+        <div class="bb-icon">🔥</div>
+        <div>
+          <div class="bb-title" id="streakNum">10</div>
+          <div class="bb-sub">Días</div>
+        </div>
+      </div>
+      <div class="bb-item reportar" id="reportarBtn">
+        REPORTAR
+        <div class="cam-circ">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---------------- MAPA ---------------- -->
+  <div class="view" id="view-mapa">
+    <div class="map-card">
+      <div class="map-legend">
+        <div class="lg-row"><span class="dot red"></span> Problemas reportados</div>
+        <div class="lg-row"><span class="dot orange"></span> Problemas en proceso</div>
+        <div class="lg-row"><span class="dot green"></span> problemas solucionados</div>
+        <div class="lg-foot">
+          <div class="trash-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></div>
+          <div class="txt">Este ícono representa todos los lugares donde puedas botar tu basura</div>
+        </div>
+      </div>
+      <div class="map-mini-actions">
+        <div class="map-mini-btn" id="statsBtnMap"><div class="mmb-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2e8e1f" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div></div>
+        <div class="map-mini-btn" id="streakBtnMap"><div class="mmb-icon">🔥</div> <span id="streakNumMap">10</span></div>
+      </div>
+      <div class="map-reportar-float" id="reportarBtnMap">REPORTAR <div class="cam-circ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div></div>
+      <div id="mapFull" style="height:640px;"></div>
+      <div class="locate-btn" id="locateFullBtn">📍 Mi ubicación</div>
+      <div class="map-status" id="mapFullStatus"></div>
+      <div class="map-floating-report hidden" id="mapDetailCard"></div>
+    </div>
+  </div>
+
+  <!-- ---------------- REPORTES ---------------- -->
+  <div class="view" id="view-reportes">
+    <div class="reportes-layout">
+      <div class="reportes-side">
+        <h1>Reportes</h1>
+        <div class="desc">Observa los reportes publicados por tu comunidad y participa uniéndote a alguna para ayudar en y ser parte del cambio</div>
+        <div class="btn-new-report" id="newReportBtn">+ Nuevo reporte</div>
+        <div class="quick-report-card">
+          <div class="quick-photo-box" id="quickPhotoBox">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span id="quickPhotoLabel">Publicar/Reportar Imagen</span>
+          </div>
+          <input type="file" id="quickPhotoInput" accept="image/*" class="hidden">
+          <div class="quick-field"><label>Lugar del incidente</label><input type="text" id="quickPlace" placeholder="Del mariana samsom..."></div>
+          <div class="quick-field"><label>Fecha</label><input type="text" id="quickDate" placeholder="25/05/2026"></div>
+          <div class="quick-field">
+            <label>Hora de reunión</label>
+            <div class="quick-time-row">
+              <input type="text" id="quickHour" placeholder="--" style="width:50px;">:
+              <input type="text" id="quickMin" placeholder="--" style="width:50px;">
+              <input type="text" id="quickAmPm" placeholder="P.M" style="width:60px;">
+            </div>
+          </div>
+          <div class="quick-field"><label>Descripción de Reporte</label><textarea id="quickDesc" placeholder="Describe el problema..."></textarea></div>
+          <button class="btn-submit" id="quickSubmitBtn">Publicar reporte</button>
+        </div>
+      </div>
+      <div>
+        <div class="filter-tabs" id="reportFilterTabs">
+          <div class="filter-tab active" data-filter="todos">Todos</div>
+          <div class="filter-tab" data-filter="reportado">Reportados <span class="warn">!</span></div>
+          <div class="filter-tab" data-filter="proceso">En proceso <span class="warn">!</span></div>
+          <div class="filter-tab" data-filter="solucionado">Solucionados <span class="warn">!</span></div>
+        </div>
+        <div id="reportsGrid"></div>
+        <div class="pagination-bar" id="paginationBar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---------------- COMUNIDAD ---------------- -->
+  <div class="view" id="view-comunidad">
+    <div class="comunidad-layout">
+      <div class="comunidad-side">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2e8e1f" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <h2>Comunidad</h2>
+        <div class="desc">Conecta, participa y trabaja junto a otros ciudadanos que quieren un León más limpio.</div>
+        <div class="btn-join-group" id="joinGroupBtn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          Unirse a grupo
+        </div>
+        <div class="cs-nav-item active" data-ctab="resumen">📄 Resumen</div>
+        <div class="cs-nav-item" data-ctab="publicaciones">💬 Publicaciones</div>
+        <div class="cs-nav-item" data-ctab="grupos">👥 Grupos</div>
+        <div class="cs-nav-item" data-ctab="foros">💭 Foros</div>
+        <div class="cs-nav-item" data-ctab="voluntariado">🤝 Voluntariado</div>
+        <div class="cs-nav-item" data-ctab="ranking">🏆 Ranking de miembros</div>
+        <div class="destacadas-card">
+          <h5>⭐ COMUNIDADES DESTACADAS</h5>
+          <div id="destacadasList"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="comunidad-banner">
+          <div>
+            <h2>Juntos hacemos la diferencia</h2>
+            <p>Sé parte de una comunidad activa que transforma pequeños actos en grandes cambios.</p>
+          </div>
+          <div class="cb-illus">🌱🤝♻️</div>
+        </div>
+
+        <div class="composer-card">
+          <div class="composer-top">
+            <div id="composerAvatar"></div>
+            <input type="text" id="composerInput" placeholder="¿Qué está pasando en tu comunidad?">
+          </div>
+          <div class="composer-actions">
+            <div class="composer-tools">
+              <span id="composerPhotoTool">🖼️ Foto</span>
+              <span>📍 Ubicación</span>
+              <span># Hashtag</span>
+            </div>
+            <button class="btn-publicar" id="composerPublishBtn">Publicar</button>
+          </div>
+          <input type="file" id="composerPhotoInput" accept="image/*" class="hidden">
+        </div>
+
+        <div class="comm-filter-row">
+          <div class="comm-filter-tabs" id="commFilterTabs">
+            <div class="filter-tab active" data-cfilter="todos">Todos</div>
+            <div class="filter-tab" data-cfilter="publicaciones">Publicaciones</div>
+            <div class="filter-tab" data-cfilter="grupos">Grupos</div>
+            <div class="filter-tab" data-cfilter="anuncios">Anuncios</div>
+          </div>
+          <select class="sort-select" id="commSort">
+            <option>Más recientes</option>
+            <option>Más populares</option>
+          </select>
+        </div>
+
+        <div id="communityCol"></div>
+        <div class="load-more-btn" id="loadMoreBtn">Cargar más publicaciones ⌄</div>
+      </div>
+
+      <div class="comunidad-right">
+        <div class="right-card">
+          <h4>Resumen de la comunidad</h4>
+          <div class="rc-stats-grid" id="commSummaryGrid"></div>
+          <a class="see-all-link" id="seeFullStatsLink">Ver estadísticas completas</a>
+        </div>
+        <div class="right-card">
+          <h4 style="display:flex; justify-content:space-between;">Próximas actividades <a class="see-all-link" style="margin:0;" id="seeAllUpcoming">Ver todas</a></h4>
+          <div id="upcomingList"></div>
+        </div>
+        <div class="right-card">
+          <h4 style="display:flex; justify-content:space-between;">Miembros destacados <a class="see-all-link" style="margin:0;" id="seeRanking">Ver ranking</a></h4>
+          <div id="memberRankList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---------------- PERFIL ---------------- -->
+  <div class="view" id="view-perfil">
+    <div class="perfil-layout">
+      <div class="perfil-sidebar">
+        <div class="psl-item active" data-ptab="perfil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Mi perfil</div>
+        <div class="psl-item" data-ptab="estadisticas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Mis estadísticas</div>
+        <div class="psl-item" data-ptab="reportes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6v4H9z"/><path d="M6 4h12v18H6z"/></svg>Mis reportes</div>
+        <div class="psl-item" data-ptab="actividades"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Mis actividades</div>
+        <div class="psl-item" data-ptab="puntos">🔥 <span style="margin-left:4px;">Puntos y racha</span></div>
+        <div class="psl-item" data-ptab="publicaciones"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Mis publicaciones</div>
+        <div class="psl-item" data-ptab="guardados"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>Guardados</div>
+        <div class="psl-item" data-ptab="ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Ajustes</div>
+        <div class="psl-item" data-ptab="notificaciones"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/></svg>Notificaciones</div>
+        <div class="psl-item" data-ptab="ayuda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.82 1c0 2-3 2-3 4"/></svg>Ayuda y soporte</div>
+        <div class="psl-item danger" data-ptab="salir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Cerrar sesión</div>
+      </div>
+
+      <div id="perfilMain"></div>
+    </div>
+  </div>
+
+  <!-- ---------------- ACTIVIDADES ---------------- -->
+  <div class="view" id="view-actividades">
+    <div class="section-title">Actividades <button class="add-btn" id="newActivityBtn">+ Nueva actividad</button></div>
+    <div class="activities-grid" id="activitiesGrid"></div>
+  </div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* ===================== DATA MODEL ===================== */
+const LEON = [12.4340, -86.8780];
+
+const currentUser = {
+  id:'u1', name:'Junior Parra',
+  avatar:'https://i.pravatar.cc/150?img=13',
+  bio:'Vecino del Barrio Sutiava, comprometido con un León más limpio.'
+};
+
+const usersDB = {
+  u1: currentUser,
+  u2:{id:'u2', name:'Fernando Quezada', avatar:null},
+  u3:{id:'u3', name:'Kathy Rachell', avatar:null},
+  u4:{id:'u4', name:'Silvia Altamirano', avatar:null},
+  u5:{id:'u5', name:'Marcos Gaitán', avatar:null},
+  u6:{id:'u6', name:'Ana Belén Ruiz', avatar:null},
+};
+const INITIAL_COLORS = ['#3fae29','#f5a623','#8b5cf6','#f97316','#16a34a','#e53935','#0891b2','#a16207'];
+function colorFromName(name){
+  let hash=0; for(let i=0;i<name.length;i++){ hash = name.charCodeAt(i) + ((hash<<5)-hash); }
+  return INITIAL_COLORS[Math.abs(hash) % INITIAL_COLORS.length];
+}
+function avatarHTML(user, sizeClass){
+  if(user.avatar){
+    return `<img class="avatar-round ${sizeClass}" src="${user.avatar}">`;
+  }
+  const initial = user.name.trim().charAt(0).toUpperCase();
+  return `<div class="avatar-round avatar-initial ${sizeClass}" style="background:${colorFromName(user.name)}">${initial}</div>`;
+}
+function stackAvatarHTML(user){
+  if(user.avatar) return `<img src="${user.avatar}">`;
+  const initial = user.name.trim().charAt(0).toUpperCase();
+  return `<div class="stack-initial" style="background:${colorFromName(user.name)}">${initial}</div>`;
+}
+
+let reports = [
+  {id:'r1', userId:'u3', type:'Basura acumulada en cuneta', description:'En la parte del plantel de la alcaldía de fundeci hay una cantidad muy considerable de basura (apoyo por favor)', image:'https://images.unsplash.com/photo-1621451537084-482c73073a0f?w=600&q=60', lat:12.4340, lng:-86.8780, date:'2 Horas', status:'reportado', location:'Barrio fundeci, León', commentsCount:95, likes:119},
+  {id:'r2', userId:'u1', type:'Basura acumulada en cause', description:'Encontre este lugar del cual creo que con ayuda de todos podemos mejorar', image:'https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?w=600&q=60', lat:12.4460, lng:-86.8695, date:'2 Horas', status:'proceso', location:'Barrio Rubén Darío, León', commentsCount:123, likes:281},
+  {id:'r3', userId:'u5', type:'Basura en playas de León', description:'Basura en nuestras playas de León. Si usted fue uno de los causantes de esta Basura, por favor apoye y unase a la jornada...', image:'https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?w=600&q=60', lat:12.4265, lng:-86.8825, date:'6 Horas', status:'reportado', location:'Playas las Peñitas, León', commentsCount:40, likes:88},
+  {id:'r4', userId:'u6', type:'Contaminación de cauce', description:'Desechos plásticos arrastrados al cauce.', image:'https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?w=600&q=60', lat:12.4390, lng:-86.8825, date:'1 Día', status:'solucionado', location:'Barrio Guadalupe, León', commentsCount:20, likes:50},
+  {id:'r5', userId:'u2', type:'Basura en vía pública', description:'Bolsas de basura sin recoger frente al mercado.', image:'https://images.unsplash.com/photo-1605600659873-d808a13e4d2a?w=600&q=60', lat:12.4390, lng:-86.8650, date:'3 Horas', status:'proceso', location:'Mercado central, León', commentsCount:12, likes:30},
+  {id:'r6', userId:'u1', type:'Basura acumulada', description:'En un día de limpieza bien limpiamos todo esto.', image:'https://images.unsplash.com/photo-1550963295-019d8a8a61c5?w=600&q=60', lat:12.4415, lng:-86.8735, date:'55 Minutos', status:'reportado', location:'Barrio Zaragoza, León', commentsCount:20, likes:50},
+];
+
+let activities = [
+  {id:'a1', name:'Limpieza comunitaria Sutiava', description:'Jornada de recolección de basura y separación de reciclaje en el barrio.', image:'https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?w=600&q=60', date:'Martes 11 de agosto 2026', time:'10:00 AM', place:'Del Súper Express de los Repartos 25vr/E', lat:12.4340, lng:-86.8780, organizerId:'u1', participants:['u1','u2','u3','u4','u5','u6'], joined:true},
+  {id:'a2', name:'Reforestación Río Chiquito', description:'Sembraremos árboles nativos junto al cauce para prevenir erosión.', image:'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=600&q=60', date:'Sábado 22 de agosto 2026', time:'8:00 AM', place:'Puente Río Chiquito', lat:12.4460, lng:-86.8695, organizerId:'u6', participants:['u6','u3'], joined:false},
+];
+
+let posts = [
+  {
+    id:'p1', userId:'u1', time:'hace 2 horas', location:'León Nicaragua',
+    meeting:{hour:'10:00 A.M', date:'MARTES 11 de agosto 2026', place:'Del super express de los repartos 25vr/E', lat:12.4340, lng:-86.8780},
+    description:'Encontre este lugar del cual creo que con ayuda de todos podemos mejorar',
+    image:'https://images.unsplash.com/photo-1621451537084-482c73073a0f?w=800&q=60',
+    likes:281, likedByMe:false,
+    joined:true, participants:52,
+    comments:[
+      {id:'c1', userId:'u2', time:'hace 1 horas', text:'Yo apoyo, yo vivo a una cuadra jajaja', likes:4, likedByMe:false, replies:[]},
+      {id:'c2', userId:'u3', time:'hace 55 minutos', text:'Como quisiera apoyar, pero lamentablemente no coincide con mi horario de clases, pero…', likes:2, likedByMe:true, replies:[]},
+      {id:'c3', userId:'u4', time:'hace 25 minutos', text:'yo me uniré por cierto… soy nueva, que debo de llevar para participar??', likes:1, likedByMe:false, replies:[
+        {id:'c3r1', userId:'u1', time:'hace 20 minutos', text:'¡Bienvenida! Solo trae guantes y muchas ganas 🌱'}
+      ]},
+    ]
+  },
+  {
+    id:'p2', userId:'u6', time:'hace 5 horas', location:'Barrio Guadalupe, León',
+    meeting:null,
+    description:'El cauce cerca de mi casa está lleno de plástico otra vez. ¿Alguien se une este fin de semana a limpiarlo?',
+    image:'https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?w=800&q=60',
+    likes:97, likedByMe:false,
+    joined:false, participants:14,
+    comments:[
+      {id:'c4', userId:'u5', time:'hace 3 horas', text:'Cuenta conmigo este sábado', likes:3, likedByMe:false, replies:[]},
+    ]
+  }
+];
+
+let notifications = [
+  {id:'n1', type:'comentario', message:'Fernando Quezada comentó en tu publicación', time:'hace 1 hora', read:false},
+  {id:'n2', type:'like', message:'A Kathy Rachell le gustó tu reporte', time:'hace 2 horas', read:false},
+  {id:'n3', type:'actividad', message:'Nueva actividad: Reforestación Río Chiquito', time:'hace 1 día', read:false},
+  {id:'n4', type:'estado', message:'Tu reporte cambió a "En proceso"', time:'hace 2 días', read:true},
+];
+
+let streakDays = 10;
+let searchTerm = '';
+let mapHomeInstance, mapFullInstance;
+let selectedReportLatLng = null;
+let selectedType = 'Acumulación de basura';
+let pendingPhotoDataUrl = null;
+let quickPhotoDataUrl = null;
+let composerPhotoDataUrl = null;
+let reportFilter = 'todos';
+let reportPage = 1;
+const REPORTS_PER_PAGE = 3;
+let currentProfileTab = 'perfil';
+let currentCommFilter = 'todos';
+let selectedMapReportId = null;
+
+/* Comunidad: publicaciones con grupo asociado, distintas del feed de Inicio */
+let communityGroups = [
+  {id:'g1', name:'Guardianes de León', members:245, icon:'🛡️'},
+  {id:'g2', name:'León Verde', members:178, icon:'🌿'},
+  {id:'g3', name:'Jóvenes por el cambio', members:132, icon:'✊'},
+  {id:'g4', name:'Universitarios en acción', members:98, icon:'🎓'},
+];
+let communityPosts = [
+  {
+    id:'cp1', userId:'u3', groupId:'g1', time:'hace 2 horas',
+    text:'Hoy realizamos una jornada de limpieza en el Parque Las Madres. ¡Gracias a todos los que se unieron!',
+    images:[
+      'https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?w=500&q=60',
+      'https://images.unsplash.com/photo-1618477388954-7852f32655ec?w=500&q=60',
+      'https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?w=500&q=60'
+    ],
+    likes:48, likedByMe:false, comments:[
+      {id:'ccp1', userId:'u5', time:'hace 1 hora', text:'¡Excelente trabajo equipo!', likes:0, likedByMe:false, replies:[]}
+    ]
+  },
+  {
+    id:'cp2', userId:'u2', groupId:'g2', time:'hace 5 horas',
+    text:'¿Alguien quiere unirse este sábado para plantar árboles en la ribera del río? Entre más seamos, más impacto generaremos.',
+    images:[], likes:35, likedByMe:false, comments:[
+      {id:'ccp2', userId:'u4', time:'hace 3 horas', text:'Yo me apunto 🌳', likes:0, likedByMe:false, replies:[]}
+    ]
+  }
+];
+const communityStats = {members:1245, memberGrowth:38, posts:326, postGrowth:24, volunteers:58, volunteerGrowth:12, activitiesDone:13, activityGrowth:5};
+const memberRanking = [
+  {userId:'u3', points:680},
+  {userId:'u2', points:540},
+  {userId:'u4', points:420},
+];
+
+/* ===================== HELPERS ===================== */
+function el(html){ const d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstChild; }
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._tm); t._tm=setTimeout(()=>t.classList.remove('show'),2200);
+}
+function statusLabel(s){ return s==='reportado'?'Problema reportado':s==='proceso'?'Problema en proceso':'Problema solucionado'; }
+function statusColor(s){ return s==='reportado'?'#e53935':s==='proceso'?'#fb8c00':'#3fae29'; }
+function matchesSearch(text){ return !searchTerm || text.toLowerCase().includes(searchTerm.toLowerCase()); }
+
+/* ===================== TOP BAR ===================== */
+document.getElementById('topUserAvatarWrap').innerHTML = avatarHTML(currentUser,'');
+document.getElementById('helloText').textContent = `¡HOLA ${currentUser.name.toUpperCase()}!`;
+
+document.querySelectorAll('.navlink').forEach(nl=>{
+  nl.addEventListener('click', ()=> switchView(nl.dataset.view));
+});
+document.getElementById('logoHome').addEventListener('click', ()=>switchView('inicio'));
+
+function switchView(name){
+  document.querySelectorAll('.navlink').forEach(n=>n.classList.toggle('active', n.dataset.view===name));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  if(name!=='mapa'){ const c=document.getElementById('mapDetailCard'); if(c) c.classList.add('hidden'); }
+  if(name==='mapa'){ setTimeout(()=>{ if(mapFullInstance){ mapFullInstance.invalidateSize(); } },80); }
+  if(name==='inicio'){ setTimeout(()=>{ if(mapHomeInstance){ mapHomeInstance.invalidateSize(); } },80); }
+  if(name==='perfil'){ renderPerfil(); }
+}
+
+/* search */
+document.getElementById('searchInput').addEventListener('input', e=>{
+  searchTerm = e.target.value;
+  renderPosts(); renderComments(currentOpenPostId); renderReports(); renderActivities(); renderCommunity();
+});
+
+/* notifications dropdown */
+const bellBtn = document.getElementById('bellBtn');
+const notifDropdown = document.getElementById('notifDropdown');
+bellBtn.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  notifDropdown.classList.toggle('hidden');
+  renderNotifications();
+});
+document.addEventListener('click', (e)=>{
+  if(!notifDropdown.contains(e.target) && e.target!==bellBtn) notifDropdown.classList.add('hidden');
+});
+function renderNotifications(){
+  const list=document.getElementById('notifList');
+  list.innerHTML='';
+  notifications.forEach(n=>{
+    list.appendChild(el(`<div class="notif-item ${n.read?'':'unread'}">
+      <div class="notif-dot"></div>
+      <div><div>${n.message}</div><div class="t">${n.time}</div></div>
+    </div>`));
+  });
+  notifications.forEach(n=>n.read=true);
+  updateBellBadge();
+}
+function updateBellBadge(){
+  const unread = notifications.filter(n=>!n.read).length;
+  const badge=document.getElementById('bellBadge');
+  if(unread>0){ badge.textContent=unread; badge.style.display='flex'; } else { badge.style.display='none'; }
+}
+function addNotification(message, type){
+  notifications.unshift({id:'n'+Date.now(), type, message, time:'ahora mismo', read:false});
+  updateBellBadge();
+}
+updateBellBadge();
+
+/* ===================== PROFILE DROPDOWN (tarjeta al hacer clic en avatar) ===================== */
+const profileBtn = document.getElementById('profileBtn');
+const profileDropdown = document.getElementById('profileDropdown');
+profileBtn.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  notifDropdown.classList.add('hidden');
+  profileDropdown.classList.toggle('hidden');
+  if(!profileDropdown.classList.contains('hidden')) renderProfileDropdown();
+});
+document.addEventListener('click', (e)=>{
+  if(!profileDropdown.contains(e.target) && e.target!==profileBtn && !profileBtn.contains(e.target)) profileDropdown.classList.add('hidden');
+});
+function renderProfileDropdown(){
+  profileDropdown.innerHTML = `
+    <div class="pd-head" id="pdHeadGoProfile">
+      <div class="pd-toprow">
+        ${avatarHTML(currentUser,'').replace('avatar-round','avatar-round profile-avatar-big')}
+        <div class="pd-level-badge">4</div>
+      </div>
+      <div class="pd-name">${currentUser.name}</div>
+      <div class="pd-loc">📍 León, Nicaragua</div>
+      <div class="pd-active-chip">Usuario activo</div>
+    </div>
+    <div class="pd-menu">
+      <div class="pd-menu-item" id="pdEditProfile">Editar información de perfil
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+      </div>
+      <div class="pd-menu-item" id="pdVisualConfig">Configuración visual
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </div>
+      <div class="pd-menu-item" id="pdMyPosts">Mis publicaciones
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </div>
+      <div class="pd-menu-item" id="pdMyNotifs">Mis notificaciones
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
+      </div>
+      <div class="pd-menu-item danger" id="pdLogout">Cerrar sesión
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </div>
+    </div>
+  `;
+  document.getElementById('pdHeadGoProfile').addEventListener('click', ()=>{ profileDropdown.classList.add('hidden'); goToProfile('perfil'); });
+  document.getElementById('pdEditProfile').addEventListener('click', (e)=>{ e.stopPropagation(); profileDropdown.classList.add('hidden'); openEditProfileModal(); });
+  document.getElementById('pdVisualConfig').addEventListener('click', (e)=>{ e.stopPropagation(); profileDropdown.classList.add('hidden'); toast('Configuración visual: próximamente'); });
+  document.getElementById('pdMyPosts').addEventListener('click', (e)=>{ e.stopPropagation(); profileDropdown.classList.add('hidden'); goToProfile('publicaciones'); });
+  document.getElementById('pdMyNotifs').addEventListener('click', (e)=>{ e.stopPropagation(); profileDropdown.classList.add('hidden'); bellBtn.click(); });
+  document.getElementById('pdLogout').addEventListener('click', (e)=>{ e.stopPropagation(); profileDropdown.classList.add('hidden'); toast('Sesión cerrada (simulado)'); });
+}
+function goToProfile(tab){
+  currentProfileTab = tab;
+  switchView('perfil');
+  document.querySelectorAll('.perfil-sidebar .psl-item').forEach(i=>i.classList.toggle('active', i.dataset.ptab===tab));
+  renderPerfil();
+}
+function openEditProfileModal(){
+  openModal(`
+    <div class="form-field"><label>Nombre</label><input type="text" id="editName" value="${currentUser.name}"></div>
+    <div class="form-field"><label>Información del perfil</label><textarea id="editBio">${currentUser.bio}</textarea></div>
+    <button class="btn-submit" id="saveProfileBtn">Guardar cambios</button>
+  `,'Editar información de perfil');
+  document.getElementById('saveProfileBtn').addEventListener('click', ()=>{
+    currentUser.name = document.getElementById('editName').value.trim() || currentUser.name;
+    currentUser.bio = document.getElementById('editBio').value.trim() || currentUser.bio;
+    document.getElementById('helloText').textContent = `¡HOLA ${currentUser.name.toUpperCase()}!`;
+    closeModal(); toast('Perfil actualizado'); renderPosts(); renderPerfil();
+  });
+}
+
+/* ===================== MODAL SYSTEM ===================== */
+function openModal(innerHtml, title){
+  const overlay = el(`<div class="overlay" id="activeOverlay">
+    <div class="modal">
+      <div class="modal-close" id="modalCloseBtn">&times;</div>
+      ${title?`<h2>${title}</h2>`:''}
+      <div id="modalBody"></div>
+    </div>
+  </div>`);
+  document.body.appendChild(overlay);
+  document.getElementById('modalBody').innerHTML = innerHtml;
+  document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) closeModal(); });
+}
+function closeModal(){
+  const o=document.getElementById('activeOverlay');
+  if(o) o.remove();
+}
+
+/* ===================== POSTS (INICIO) ===================== */
+let currentOpenPostId = posts[0].id;
+
+function postCardHTML(p){
+  const u = usersDB[p.userId];
+  return `
+  <div class="card" data-post="${p.id}">
+    <div class="post-head">
+      <div class="post-user">
+        <div class="avatar-dotwrap">
+          ${avatarHTML(u,'')}
+          <div class="online-dot"></div>
+        </div>
+        <div>
+          <div class="pname">${u.name}</div>
+          <div class="pmeta">${p.time} · ${p.location}</div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:flex-start; gap:10px;">
+        ${p.meeting ? `<div class="meeting-box">
+          HORA DE REUNIÓN: ${p.meeting.hour}<br>
+          FECHA: ${p.meeting.date}<br>
+          LUGAR: ${p.meeting.place}<br>
+          <span class="ver-mapa" data-lat="${p.meeting.lat}" data-lng="${p.meeting.lng}">VER EN EL MAPA</span>
+        </div>` : ''}
+        <div class="menu-dots" data-menu="${p.id}">⋯</div>
+      </div>
+    </div>
+    <div class="post-desc">${p.description}</div>
+    <div class="post-photo"><img src="${p.image}"></div>
+    <div class="post-actions">
+      <div class="action-btn like-btn ${p.likedByMe?'liked':''}" data-like="${p.id}">
+        <svg viewBox="0 0 24 24" fill="${p.likedByMe?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+        <span>${p.likes}</span>
+      </div>
+      <div class="action-btn open-comments" data-open="${p.id}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>${p.comments.length}</span>
+      </div>
+      <div class="action-btn share-btn" data-share="${p.id}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>
+        <span>Compartir</span>
+      </div>
+    </div>
+    <div class="join-row">
+      <div class="btn-join ${p.joined?'joined':''}" data-join="${p.id}">${p.joined?'UNIDO ✓':'UNIRSE'}</div>
+      <div class="stack-avatars">
+        ${Object.values(usersDB).slice(0,4).map(u=>stackAvatarHTML(u)).join('')}
+      </div>
+      <div class="stack-count">+${p.participants}</div>
+    </div>
+  </div>`;
+}
+
+function renderPosts(){
+  const col = document.getElementById('postsCol');
+  const filtered = posts.filter(p=> matchesSearch(p.description) || matchesSearch(usersDB[p.userId].name) || matchesSearch(p.location));
+  col.innerHTML = filtered.map(postCardHTML).join('') || `<div class="card">No se encontraron publicaciones.</div>`;
+  attachPostEvents(col);
+}
+
+function attachPostEvents(scope){
+  scope.querySelectorAll('.like-btn').forEach(b=>b.addEventListener('click', ()=>toggleLikePost(b.dataset.like)));
+  scope.querySelectorAll('.open-comments').forEach(b=>b.addEventListener('click', ()=>{ currentOpenPostId=b.dataset.open; renderComments(currentOpenPostId); if(window.innerWidth<1000){ document.getElementById('commentsCol').scrollIntoView({behavior:'smooth'}); } }));
+  scope.querySelectorAll('.share-btn').forEach(b=>b.addEventListener('click', ()=>sharePost(b.dataset.share)));
+  scope.querySelectorAll('[data-join]').forEach(b=>b.addEventListener('click', ()=>toggleJoin(b.dataset.join)));
+  scope.querySelectorAll('.ver-mapa').forEach(b=>b.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    switchView('mapa');
+    setTimeout(()=>{ mapFullInstance.setView([parseFloat(b.dataset.lat), parseFloat(b.dataset.lng)], 16); },150);
+  }));
+  scope.querySelectorAll('[data-menu]').forEach(b=>b.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    if(confirm('¿Deseas reportar esta publicación?')) toast('Publicación reportada. Gracias por ayudar a mantener la comunidad segura.');
+  }));
+}
+
+function toggleLikePost(id){
+  const p = posts.find(p=>p.id===id);
+  p.likedByMe = !p.likedByMe;
+  p.likes += p.likedByMe ? 1 : -1;
+  renderPosts(); renderCommunity();
+}
+function toggleJoin(id){
+  const p = posts.find(p=>p.id===id);
+  p.joined = !p.joined;
+  p.participants += p.joined ? 1 : -1;
+  toast(p.joined ? '¡Te uniste a la jornada!' : 'Has salido de la jornada.');
+  renderPosts(); renderCommunity();
+}
+function sharePost(id){
+  const p = posts.find(p=>p.id===id);
+  const shareUrl = `https://CHERRY.app/publicacion/${id}`;
+  if(navigator.share){
+    navigator.share({title:'CHERRY', text:p.description, url:shareUrl}).catch(()=>{});
+  } else {
+    navigator.clipboard?.writeText(shareUrl);
+    toast('Enlace de la publicación copiado');
+  }
+}
+
+/* ===================== COMMENTS ===================== */
+function renderComments(postId){
+  const p = posts.find(p=>p.id===postId);
+  const col = document.getElementById('commentsCol');
+  if(!p){ col.innerHTML=''; return; }
+  col.innerHTML = `
+  <div class="comments-card">
+    <div class="comments-head">Comentarios (${countAllComments(p)})</div>
+    <div class="comments-list" id="commentsList"></div>
+    <div class="comment-input-bar">
+      <input type="text" id="newCommentInput" placeholder="Escribe tu comentario">
+      <div class="send-btn" id="sendCommentBtn"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div>
+    </div>
+  </div>`;
+  const list = document.getElementById('commentsList');
+  p.comments.forEach(c=>{
+    const u = usersDB[c.userId];
+    const commentEl = el(`<div class="comment" data-cid="${c.id}">
+      <div class="comment-row">
+        ${avatarHTML(u,'sm')}
+        <div class="comment-body">
+          <div><span class="comment-name">${u.name}</span><span class="comment-time">${c.time}</span></div>
+          <div class="comment-text">${c.text}</div>
+          <div class="comment-foot">
+            <span class="reply-toggle">Responder</span>
+            <span class="like-comment">${c.likedByMe?'❤️':'🤍'} ${c.likes}</span>
+          </div>
+          <div class="reply-list"></div>
+          <div class="reply-input-row hidden">
+            <input type="text" placeholder="Escribe una respuesta...">
+            <div class="send-btn" style="width:32px;height:32px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>`);
+    const replyList = commentEl.querySelector('.reply-list');
+    c.replies.forEach(r=>{
+      const ru = usersDB[r.userId];
+      replyList.appendChild(el(`<div class="comment" style="margin-bottom:8px;">
+        <div class="comment-row">
+          ${avatarHTML(ru,'xs')}
+          <div class="comment-body">
+            <div><span class="comment-name" style="font-size:12.5px;">${ru.name}</span><span class="comment-time">${r.time}</span></div>
+            <div class="comment-text">${r.text}</div>
+          </div>
+        </div>
+      </div>`));
+    });
+    commentEl.querySelector('.reply-toggle').addEventListener('click', ()=>{
+      commentEl.querySelector('.reply-input-row').classList.toggle('hidden');
+    });
+    commentEl.querySelector('.like-comment').addEventListener('click', ()=>{
+      c.likedByMe = !c.likedByMe;
+      c.likes += c.likedByMe ? 1 : -1;
+      renderComments(postId);
+    });
+    const replyInput = commentEl.querySelector('.reply-input-row input');
+    commentEl.querySelector('.reply-input-row .send-btn').addEventListener('click', ()=>{
+      if(replyInput.value.trim()===''){ return; }
+      c.replies.push({id:'r'+Date.now(), userId:currentUser.id, time:'ahora mismo', text:replyInput.value.trim()});
+      renderComments(postId);
+    });
+    list.appendChild(commentEl);
+  });
+  document.getElementById('sendCommentBtn').addEventListener('click', ()=>submitComment(postId));
+  document.getElementById('newCommentInput').addEventListener('keydown', e=>{ if(e.key==='Enter') submitComment(postId); });
+}
+function countAllComments(p){ return p.comments.reduce((sum,c)=>sum+1+c.replies.length,0); }
+function submitComment(postId){
+  const input = document.getElementById('newCommentInput');
+  const text = input.value.trim();
+  if(!text) return;
+  const p = posts.find(p=>p.id===postId);
+  p.comments.push({id:'c'+Date.now(), userId:currentUser.id, time:'ahora mismo', text, likes:0, likedByMe:false, replies:[]});
+  input.value='';
+  renderPosts(); renderComments(postId); renderCommunity();
+  addNotification('Nuevo comentario en tu publicación', 'comentario');
+}
+
+/* ===================== COMMUNITY VIEW (página completa) ===================== */
+function commPostCardHTML(cp){
+  const u = usersDB[cp.userId];
+  const g = communityGroups.find(g=>g.id===cp.groupId);
+  const gridClass = cp.images.length>=3?'n3':cp.images.length===2?'n2':'n1';
+  return `<div class="comm-post-card" data-cpid="${cp.id}">
+    <div class="comm-post-top">
+      <div class="comm-post-user">
+        ${avatarHTML(u,'')}
+        <div>
+          <div class="comm-post-name">${u.name} ${g?`<span class="comm-group-tag">${g.icon} ${g.name}</span>`:''}</div>
+          <div class="comm-post-time">${cp.time}</div>
+        </div>
+      </div>
+      <div class="menu-dots" data-cmenu="${cp.id}">⋯</div>
+    </div>
+    <div class="comm-post-text">${cp.text}</div>
+    ${cp.images.length ? `<div class="comm-photo-grid ${gridClass}">${cp.images.map(i=>`<img src="${i}">`).join('')}</div>` : ''}
+    <div class="comm-post-actions">
+      <div class="action-btn like-btn ${cp.likedByMe?'liked':''}" data-cplike="${cp.id}">
+        <svg viewBox="0 0 24 24" fill="${cp.likedByMe?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+        <span>${cp.likes}</span>
+      </div>
+      <div class="action-btn" data-cpcomments="${cp.id}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>${cp.comments.length}</span>
+      </div>
+      <div class="action-btn" data-cpshare="${cp.id}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>
+        <span>Compartir</span>
+      </div>
+    </div>
+  </div>`;
+}
+function renderCommunity(){
+  const col = document.getElementById('communityCol');
+  if(!col) return;
+  let filtered = communityPosts.filter(cp=> matchesSearch(cp.text) || matchesSearch(usersDB[cp.userId].name));
+  col.innerHTML = filtered.map(commPostCardHTML).join('') || '<div class="card">No se encontraron publicaciones.</div>';
+  col.querySelectorAll('[data-cplike]').forEach(b=>b.addEventListener('click', ()=>{
+    const cp = communityPosts.find(c=>c.id===b.dataset.cplike);
+    cp.likedByMe = !cp.likedByMe; cp.likes += cp.likedByMe?1:-1;
+    renderCommunity();
+  }));
+  col.querySelectorAll('[data-cpshare]').forEach(b=>b.addEventListener('click', ()=>{
+    const url = `https://CHERRY.app/comunidad/${b.dataset.cpshare}`;
+    if(navigator.share){ navigator.share({title:'CHERRY', url}).catch(()=>{}); } else { navigator.clipboard?.writeText(url); toast('Enlace copiado'); }
+  }));
+  col.querySelectorAll('[data-cpcomments]').forEach(b=>b.addEventListener('click', ()=>openCommunityCommentsModal(b.dataset.cpcomments)));
+  col.querySelectorAll('[data-cmenu]').forEach(b=>b.addEventListener('click', ()=>{
+    if(confirm('¿Deseas reportar esta publicación?')) toast('Publicación reportada a los moderadores.');
+  }));
+  renderDestacadas(); renderCommSummary(); renderUpcoming(); renderMemberRanking();
+}
+function openCommunityCommentsModal(cpId){
+  const cp = communityPosts.find(c=>c.id===cpId);
+  const renderList = ()=> cp.comments.map(c=>{
+    const u = usersDB[c.userId];
+    return `<div class="comment" style="margin-bottom:14px;">
+      <div class="comment-row">
+        ${avatarHTML(u,'sm')}
+        <div class="comment-body">
+          <div><span class="comment-name">${u.name}</span><span class="comment-time">${c.time}</span></div>
+          <div class="comment-text">${c.text}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  openModal(`
+    <div id="commModalList" style="max-height:320px; overflow-y:auto; margin-bottom:12px;">${renderList()}</div>
+    <div class="comment-input-bar" style="border-top:1px solid var(--border); padding-top:14px;">
+      <input type="text" id="commModalInput" placeholder="Escribe tu comentario">
+      <div class="send-btn" id="commModalSend"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div>
+    </div>
+  `, `Comentarios (${cp.comments.length})`);
+  document.getElementById('commModalSend').addEventListener('click', ()=>{
+    const input = document.getElementById('commModalInput');
+    if(!input.value.trim()) return;
+    cp.comments.push({id:'c'+Date.now(), userId:currentUser.id, time:'ahora mismo', text:input.value.trim(), likes:0, likedByMe:false, replies:[]});
+    input.value='';
+    document.getElementById('commModalList').innerHTML = renderList();
+    renderCommunity();
+  });
+}
+function renderDestacadas(){
+  const el2 = document.getElementById('destacadasList');
+  if(!el2) return;
+  el2.innerHTML = communityGroups.map(g=>`<div class="dest-row">
+    <div style="width:36px;height:36px;border-radius:10px;background:var(--green-light);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">${g.icon}</div>
+    <div class="dr-info"><div class="dr-name">${g.name}</div><div class="dr-count">${g.members} miembros</div></div>
+    <div class="dr-join" data-groupjoin="${g.id}">Unirse</div>
+  </div>`).join('');
+  el2.querySelectorAll('[data-groupjoin]').forEach(b=>b.addEventListener('click', ()=>{
+    const g = communityGroups.find(g=>g.id===b.dataset.groupjoin);
+    toast(`Te uniste al grupo "${g.name}"`);
+    b.textContent='Unido ✓'; b.style.background='#e0e0e0'; b.style.color='#555';
+  }));
+}
+function renderCommSummary(){
+  const el2 = document.getElementById('commSummaryGrid');
+  if(!el2) return;
+  const s = communityStats;
+  el2.innerHTML = `
+    <div class="rc-stat"><div class="rc-stat-icon" style="background:var(--green-light);">👥</div><div><div class="rc-stat-num">${s.members.toLocaleString()}</div><div class="rc-stat-lbl">Miembros</div><div class="rc-stat-delta">+${s.memberGrowth} este mes ↗</div></div></div>
+    <div class="rc-stat"><div class="rc-stat-icon" style="background:#fff4e5;">💬</div><div><div class="rc-stat-num">${s.posts}</div><div class="rc-stat-lbl">Publicaciones</div><div class="rc-stat-delta">+${s.postGrowth} este mes ↗</div></div></div>
+    <div class="rc-stat"><div class="rc-stat-icon" style="background:#e6f6f8;">🤝</div><div><div class="rc-stat-num">${s.volunteers}</div><div class="rc-stat-lbl">Voluntarios activos</div><div class="rc-stat-delta">+${s.volunteerGrowth} este mes ↗</div></div></div>
+    <div class="rc-stat"><div class="rc-stat-icon" style="background:#f2eafd;">📅</div><div><div class="rc-stat-num">${s.activitiesDone}</div><div class="rc-stat-lbl">Actividades realizadas</div><div class="rc-stat-delta">+${s.activityGrowth} este mes ↗</div></div></div>
+  `;
+}
+function renderUpcoming(){
+  const el2 = document.getElementById('upcomingList');
+  if(!el2) return;
+  el2.innerHTML = activities.slice(0,3).map(a=>{
+    const parts = a.date.match(/(\d+)/);
+    const day = parts ? parts[1] : '--';
+    const mon = (a.date.match(/[A-Za-zÁ-ú]+/g)||['---']).slice(-1)[0].slice(0,3).toUpperCase();
+    return `<div class="upcoming-row" data-actupcoming="${a.id}">
+      <div class="date-badge"><div class="dnum">${day}</div><div class="dmon">${mon}</div></div>
+      <div class="upcoming-body"><div class="up-title">${a.name}</div><div class="up-sub">${a.place} · ${a.time}</div></div>
+      <div class="up-count">${a.participants.length}<br>se unirán</div>
+    </div>`;
+  }).join('') || '<div style="font-size:12px;color:var(--text-soft);">No hay actividades próximas.</div>';
+  el2.querySelectorAll('[data-actupcoming]').forEach(row=>row.addEventListener('click', ()=>switchView('actividades')));
+}
+function renderMemberRanking(){
+  const el2 = document.getElementById('memberRankList');
+  if(!el2) return;
+  el2.innerHTML = memberRanking.map((m,i)=>{
+    const u = usersDB[m.userId];
+    return `<div class="member-rank-row">
+      <div class="rank-circle top${i+1}">${i+1}</div>
+      ${avatarHTML(u,'sm')}
+      <div class="mr-info"><div class="mr-name">${u.name}</div><div class="mr-pts">${m.points} pts</div></div>
+      🏆
+    </div>`;
+  }).join('');
+}
+document.getElementById('joinGroupBtn').addEventListener('click', ()=>toast('¡Te uniste al grupo comunitario de CHERRY!'));
+document.getElementById('seeFullStatsLink').addEventListener('click', ()=>openStatsModal());
+document.getElementById('seeAllUpcoming').addEventListener('click', ()=>switchView('actividades'));
+document.getElementById('seeRanking').addEventListener('click', ()=>toast('Ranking completo: próximamente'));
+document.getElementById('loadMoreBtn').addEventListener('click', ()=>toast('No hay más publicaciones por ahora'));
+document.querySelectorAll('.comunidad-side .cs-nav-item').forEach(item=>{
+  item.addEventListener('click', ()=>{
+    document.querySelectorAll('.comunidad-side .cs-nav-item').forEach(i=>i.classList.remove('active'));
+    item.classList.add('active');
+    if(item.dataset.ctab!=='resumen' && item.dataset.ctab!=='publicaciones') toast('Sección en construcción');
+  });
+});
+document.getElementById('commFilterTabs').addEventListener('click', (e)=>{
+  const tab = e.target.closest('.filter-tab'); if(!tab) return;
+  document.querySelectorAll('#commFilterTabs .filter-tab').forEach(t=>t.classList.remove('active'));
+  tab.classList.add('active');
+  currentCommFilter = tab.dataset.cfilter;
+  renderCommunity();
+});
+document.getElementById('composerAvatar').innerHTML = avatarHTML(currentUser,'sm');
+document.getElementById('composerPhotoTool').addEventListener('click', ()=>document.getElementById('composerPhotoInput').click());
+document.getElementById('composerPhotoInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{ composerPhotoDataUrl = reader.result; toast('Foto adjuntada a tu publicación'); };
+  reader.readAsDataURL(file);
+});
+document.getElementById('composerPublishBtn').addEventListener('click', ()=>{
+  const text = document.getElementById('composerInput').value.trim();
+  if(!text){ toast('Escribe algo para publicar'); return; }
+  communityPosts.unshift({
+    id:'cp'+Date.now(), userId:currentUser.id, groupId:null, time:'ahora mismo', text,
+    images: composerPhotoDataUrl?[composerPhotoDataUrl]:[], likes:0, likedByMe:false, comments:[]
+  });
+  document.getElementById('composerInput').value=''; composerPhotoDataUrl=null;
+  renderCommunity();
+  toast('¡Publicación creada!');
+});
+document.getElementById('newPostBtn')?.addEventListener('click', ()=>document.getElementById('composerInput')?.focus());
+
+/* ===================== PERFIL (página completa) ===================== */
+document.querySelectorAll('.perfil-sidebar .psl-item').forEach(item=>{
+  item.addEventListener('click', ()=>{
+    if(item.dataset.ptab==='salir'){ toast('Sesión cerrada (simulado)'); return; }
+    document.querySelectorAll('.perfil-sidebar .psl-item').forEach(i=>i.classList.remove('active'));
+    item.classList.add('active');
+    currentProfileTab = item.dataset.ptab;
+    if(currentProfileTab==='reportes') switchView('reportes');
+    else if(currentProfileTab==='actividades') switchView('actividades');
+    else if(['estadisticas','puntos','guardados','ajustes','notificaciones','ayuda'].includes(currentProfileTab)){ toast('Sección en construcción'); renderPerfil(); }
+    else renderPerfil();
+  });
+});
+function renderPerfil(){
+  const main = document.getElementById('perfilMain');
+  const myReports = reports.filter(r=>r.userId===currentUser.id);
+  const myActivities = activities.filter(a=>a.participants.includes(currentUser.id));
+  const myPosts = posts.filter(p=>p.userId===currentUser.id).concat(communityPosts.filter(p=>p.userId===currentUser.id));
+  const points = 1250, pointsGoal=1500, levelProgress = 800, levelGoal=1000;
+
+  if(currentProfileTab==='publicaciones'){
+    main.innerHTML = `<div class="actividad-card"><div class="ac-head"><h4>Mis publicaciones</h4></div><div id="perfilPostsList"></div></div>`;
+    const list = document.getElementById('perfilPostsList');
+    if(myPosts.length===0){ list.innerHTML = '<div style="font-size:13px;color:var(--text-soft);">Aún no has publicado nada.</div>'; }
+    else { list.innerHTML = myPosts.map(p=>`<div class="ai-row"><img class="ai-thumb" src="${p.image||(p.images&&p.images[0])||'https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?w=200&q=60'}"><div class="ai-body"><div class="ai-title">${(p.description||p.text||'').slice(0,60)}</div><div class="ai-sub">${p.time}</div></div></div>`).join(''); }
+    return;
+  }
+
+  main.innerHTML = `
+    <div class="perfil-banner">
+      <div class="perfil-banner-left">
+        <div class="perfil-avatar-wrap">
+          ${avatarHTML(currentUser,'').replace('avatar-round','avatar-round profile-avatar-big')}
+          <div class="cam-edit" id="perfilCamEdit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+        </div>
+        <div>
+          <div class="perfil-name">${currentUser.name}</div>
+          <div class="perfil-loc">📍 León, Nicaragua</div>
+          <div class="perfil-bio">${currentUser.bio}</div>
+          <button class="perfil-edit-btn" id="perfilEditBtn">✏️ Editar perfil</button>
+        </div>
+      </div>
+      <div class="perfil-level-card">
+        <div class="lvl-label">Nivel actual</div>
+        <div class="lvl-name">🍃 Nivel 4 · Ciudadano Activo</div>
+        <div class="lvl-progress-track"><div class="lvl-progress-fill" style="width:${(levelProgress/levelGoal)*100}%;"></div></div>
+        <div class="lvl-progress-txt">${levelProgress} / ${levelGoal} pts</div>
+      </div>
+      <div class="perfil-decor">🌳</div>
+    </div>
+
+    <div class="perfil-two-col" style="margin-top:16px;">
+      <div></div>
+      <div class="logros-card">
+        <div class="logros-head"><h4>Logros recientes</h4><a class="see-all" id="logrosSeeAll">Ver todos</a></div>
+        <div class="logro-item"><div class="logro-icon" style="background:var(--green-light);">🌿</div><div><div class="lg-title">Cuidando mi barrio</div><div class="lg-sub">Reportaste ${myReports.length||10} problemas acumulados</div><div class="lg-date">Hace poco</div></div></div>
+        <div class="logro-item"><div class="logro-icon" style="background:#fff4e5;">⭐</div><div><div class="lg-title">Participación constante</div><div class="lg-sub">Completaste ${myActivities.length||5} actividades</div><div class="lg-date">Hace poco</div></div></div>
+        <div class="logro-item"><div class="logro-icon" style="background:#f2eafd;">🏅</div><div><div class="lg-title">Impacto positivo</div><div class="lg-sub">Ayudaste a solucionar 3 problemas</div><div class="lg-date">Hace poco</div></div></div>
+      </div>
+    </div>
+
+    <div class="perfil-stats-row">
+      <div class="pstat-card"><div class="pstat-icon" style="background:var(--green-light);">📋</div><div><div class="pstat-num">${myReports.length}</div><div class="pstat-lbl">Reportes realizados</div><div class="pstat-delta">activo ↗</div></div></div>
+      <div class="pstat-card"><div class="pstat-icon" style="background:#f2eafd;">👥</div><div><div class="pstat-num">${myActivities.length}</div><div class="pstat-lbl">Actividades completadas</div><div class="pstat-delta">activo ↗</div></div></div>
+      <div class="pstat-card"><div class="pstat-icon" style="background:#e6f6f8;">💬</div><div><div class="pstat-num">${myPosts.length}</div><div class="pstat-lbl">Publicaciones</div><div class="pstat-delta">activo ↗</div></div></div>
+      <div class="pstat-card"><div class="pstat-icon" style="background:#fff4e5;">⭐</div><div><div class="pstat-num">${points.toLocaleString()}</div><div class="pstat-lbl">Puntos totales</div><div class="pstat-delta">+180 este mes ↗</div></div></div>
+      <div class="pstat-card"><div class="pstat-icon" style="background:#fdecea;">🔥</div><div><div class="pstat-num">${streakDays} días</div><div class="pstat-lbl">Racha actual</div><div class="pstat-delta">¡Sigue así!</div></div></div>
+    </div>
+
+    <div class="perfil-two-col">
+      <div class="actividad-card">
+        <div class="ac-head"><h4>Mi actividad reciente</h4><a class="see-all" id="verTodoActividad">Ver todo</a></div>
+        <div id="perfilActividadList"></div>
+      </div>
+      <div>
+        <div class="impacto-card">
+          <div class="ac-head"><h4>Mi impacto en la ciudad</h4><a class="see-all" id="verDetallesImpacto">Ver detalles</a></div>
+          <div class="donut-wrap">
+            <div style="position:relative;">
+              <div class="donut" style="background:conic-gradient(var(--green) 0% 45%, var(--amber) 45% 75%, var(--purple) 75% 90%, #0891b2 90% 100%);"></div>
+              <div class="donut-center"><div class="leaf">🍃</div><div class="txt">Tu contribución<br>hace la diferencia</div></div>
+            </div>
+            <div class="donut-legend">
+              <div class="dl-row"><span class="dl-dot" style="background:var(--green);"></span>Reportes<span class="dl-pct">45%</span></div>
+              <div class="dl-row"><span class="dl-dot" style="background:var(--amber);"></span>Actividades<span class="dl-pct">30%</span></div>
+              <div class="dl-row"><span class="dl-dot" style="background:var(--purple);"></span>Solucionados<span class="dl-pct">15%</span></div>
+              <div class="dl-row"><span class="dl-dot" style="background:#0891b2;"></span>Publicaciones<span class="dl-pct">10%</span></div>
+            </div>
+          </div>
+          <div class="impacto-msg">🌱 Has ayudado a mejorar tu ciudad. Sigue así, tu esfuerzo inspira a más personas.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="niveles-card">
+      <h4 style="margin-bottom:14px;">Mis niveles</h4>
+      <div class="niveles-row">
+        <div class="nivel-item"><div class="nivel-badge done">🌱</div><div class="nivel-name">Nivel 1</div><div class="nivel-status">Explorador</div><div class="nivel-status" style="color:var(--green-dark);">✓ Completado</div></div>
+        <div class="nivel-item"><div class="nivel-badge done">🌿</div><div class="nivel-name">Nivel 2</div><div class="nivel-status">Participativo</div><div class="nivel-status" style="color:var(--green-dark);">✓ Completado</div></div>
+        <div class="nivel-item"><div class="nivel-badge done">🍀</div><div class="nivel-name">Nivel 3</div><div class="nivel-status">Comprometido</div><div class="nivel-status" style="color:var(--green-dark);">✓ Completado</div></div>
+        <div class="nivel-item"><div class="nivel-badge current">🍃</div><div class="nivel-name">Nivel 4</div><div class="nivel-status current-txt">Ciudadano Activo</div><div class="nivel-status current-txt">Actual</div></div>
+        <div class="nivel-item"><div class="nivel-badge locked">🔒</div><div class="nivel-name">Nivel 5</div><div class="nivel-status">Líder Ambiental</div><div class="nivel-status">Próximo nivel</div></div>
+      </div>
+      <div class="niveles-footer">Te faltan <b>200 puntos</b> para alcanzar el Nivel 5</div>
+    </div>
+  `;
+
+  const actList = document.getElementById('perfilActividadList');
+  const recentItems = [
+    ...myReports.slice(0,2).map(r=>({icon:'📋', bg: r.status==='reportado'?'#fdecea':r.status==='proceso'?'#fff4e5':'var(--green-light)', title:`Reportaste ${r.type}`, sub:`${r.location||'León'} · ${r.date}`, img:r.image})),
+    ...myActivities.slice(0,2).map(a=>({icon:'👥', bg:'#f2eafd', title:`Participaste en ${a.name}`, sub:`${a.place}`, img:a.image})),
+    ...myPosts.slice(0,1).map(p=>({icon:'💬', bg:'#e6f6f8', title:`Publicaste en la comunidad`, sub:`${(p.description||p.text||'').slice(0,40)}`, img:p.image||(p.images&&p.images[0])||''})),
+  ];
+  actList.innerHTML = recentItems.length ? recentItems.map(it=>`
+    <div class="ai-row">
+      <div class="ai-icon" style="background:${it.bg};">${it.icon}</div>
+      <div class="ai-body"><div class="ai-title">${it.title}</div><div class="ai-sub">${it.sub}</div></div>
+      ${it.img?`<img class="ai-thumb" src="${it.img}">`:''}
+      <span class="ai-chevron">›</span>
+    </div>`).join('') : '<div style="font-size:12.5px;color:var(--text-soft);">Aún no tienes actividad. ¡Empieza reportando o uniéndote a una jornada!</div>';
+
+  document.getElementById('perfilEditBtn').addEventListener('click', openEditProfileModal);
+  document.getElementById('perfilCamEdit').addEventListener('click', openEditProfileModal);
+  document.getElementById('logrosSeeAll').addEventListener('click', ()=>toast('Todos tus logros: próximamente'));
+  document.getElementById('verTodoActividad').addEventListener('click', ()=>toast('Historial completo: próximamente'));
+  document.getElementById('verDetallesImpacto').addEventListener('click', ()=>openStatsModal());
+}
+
+/* ===================== REPORTS VIEW ===================== */
+function miniStaticMapSVG(status, seed){
+  const color = statusColor(status);
+  // Líneas decorativas tipo "calles" generadas a partir de una semilla simple, para dar textura de mapa sin cargar un mapa interactivo pesado por tarjeta.
+  const s = seed % 5;
+  return `<svg viewBox="0 0 160 90" xmlns="http://www.w3.org/2000/svg">
+    <line x1="0" y1="${20+s*4}" x2="160" y2="${30+s*3}" stroke="#7fae7a" stroke-width="2"/>
+    <line x1="0" y1="${60+s*2}" x2="160" y2="${55-s*2}" stroke="#7fae7a" stroke-width="2"/>
+    <line x1="${30+s*5}" y1="0" x2="${40+s*3}" y2="90" stroke="#7fae7a" stroke-width="2"/>
+    <line x1="${110-s*4}" y1="0" x2="${100-s*2}" y2="90" stroke="#7fae7a" stroke-width="2"/>
+  </svg>
+  <div class="pin" style="background:${color};"></div>`;
+}
+function reportRowHTML(r){
+  const u = usersDB[r.userId];
+  const seed = r.id.split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+  return `<div class="report-row-card" data-rid="${r.id}">
+    <div class="report-row-photo"><img src="${r.image}"></div>
+    <div class="report-row-body">
+      <div class="report-row-top">
+        <div>
+          <div class="report-row-title">${r.type}</div>
+          <div class="report-row-loc">📍 ${r.location||'León, Nicaragua'}</div>
+        </div>
+        <div class="menu-dots" data-rmenu="${r.id}">⋯</div>
+      </div>
+      <div class="report-row-desc">${r.description}</div>
+      <div class="report-row-meta">
+        <span>🕐 ${r.date}</span>
+        <span>👤 ${u.name}</span>
+        <span>💬 ${r.commentsCount||0}</span>
+        <span>❤️ ${r.likes||0}</span>
+      </div>
+      ${r.userId===currentUser.id ? `<select class="status-select" data-statuschange="${r.id}">
+        <option value="reportado" ${r.status==='reportado'?'selected':''}>Reportado</option>
+        <option value="proceso" ${r.status==='proceso'?'selected':''}>En proceso</option>
+        <option value="solucionado" ${r.status==='solucionado'?'selected':''}>Solucionado</option>
+      </select>` : ''}
+    </div>
+    <div class="report-row-map" data-viewmap="${r.id}">
+      <div class="mini-static-map">
+        <div class="map-status-chip ${r.status}">${r.status==='reportado'?'Reportados':r.status==='proceso'?'En proceso':'Solucionados'} !</div>
+        ${miniStaticMapSVG(r.status, seed)}
+      </div>
+      <div class="anon-box ${r.status}">
+        Este reporte mantiene al usuario en modo "anónimo"
+        <div class="ver-mapa-tag">🗺️ Ver en el mapa</div>
+      </div>
+    </div>
+  </div>`;
+}
+function renderReports(){
+  const grid = document.getElementById('reportsGrid');
+  let filtered = reports.filter(r=> matchesSearch(r.type)||matchesSearch(r.description));
+  if(reportFilter!=='todos') filtered = filtered.filter(r=>r.status===reportFilter);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / REPORTS_PER_PAGE));
+  if(reportPage>totalPages) reportPage = totalPages;
+  const pageItems = filtered.slice((reportPage-1)*REPORTS_PER_PAGE, reportPage*REPORTS_PER_PAGE);
+  grid.innerHTML = pageItems.map(reportRowHTML).join('') || '<div class="card">No se encontraron reportes.</div>';
+  grid.querySelectorAll('[data-viewmap]').forEach(b=>b.addEventListener('click', ()=>{
+    const r = reports.find(r=>r.id===b.dataset.viewmap);
+    switchView('mapa');
+    setTimeout(()=>{ mapFullInstance.setView([r.lat, r.lng], 16); showMapDetailCard(r); },150);
+  }));
+  grid.querySelectorAll('[data-statuschange]').forEach(s=>s.addEventListener('change', (e)=>{
+    e.stopPropagation();
+    const r = reports.find(r=>r.id===s.dataset.statuschange);
+    r.status = s.value;
+    renderReports(); refreshMarkers();
+    toast(`Estado actualizado a: ${statusLabel(r.status)}`);
+    addNotification(`Tu reporte cambió a "${statusLabel(r.status)}"`, 'estado');
+  }));
+  grid.querySelectorAll('[data-rmenu]').forEach(b=>b.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    if(confirm('¿Deseas reportar esta publicación como inapropiada?')) toast('Reporte enviado a moderación.');
+  }));
+  renderPagination(totalPages);
+}
+function renderPagination(totalPages){
+  const bar = document.getElementById('paginationBar');
+  if(!bar) return;
+  let html = `<div class="page-btn navbtn" id="pagePrev">‹ Anterior</div>`;
+  for(let i=1;i<=totalPages;i++){
+    if(totalPages>6 && i>2 && i<totalPages-1 && Math.abs(i-reportPage)>1){
+      if(i===3 || i===totalPages-2) html += `<span class="page-dots">...</span>`;
+      continue;
+    }
+    html += `<div class="page-btn ${i===reportPage?'active':''}" data-page="${i}">${i}</div>`;
+  }
+  html += `<div class="page-btn navbtn" id="pageNext">Siguiente ›</div>`;
+  bar.innerHTML = html;
+  bar.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click', ()=>{ reportPage=parseInt(b.dataset.page); renderReports(); window.scrollTo({top:0,behavior:'smooth'}); }));
+  document.getElementById('pagePrev').addEventListener('click', ()=>{ if(reportPage>1){ reportPage--; renderReports(); } });
+  document.getElementById('pageNext').addEventListener('click', ()=>{ if(reportPage<totalPages){ reportPage++; renderReports(); } });
+}
+document.getElementById('reportFilterTabs').addEventListener('click', (e)=>{
+  const tab = e.target.closest('.filter-tab'); if(!tab) return;
+  document.querySelectorAll('#reportFilterTabs .filter-tab').forEach(t=>t.classList.remove('active'));
+  tab.classList.add('active');
+  reportFilter = tab.dataset.filter;
+  reportPage = 1;
+  renderReports();
+});
+document.getElementById('newReportBtn').addEventListener('click', openReportForm);
+document.getElementById('reportarBtn').addEventListener('click', openReportForm);
+document.getElementById('reportarBtnMap').addEventListener('click', openReportForm);
+
+/* Formulario rápido lateral en la sección Reportes */
+document.getElementById('quickPhotoBox').addEventListener('click', ()=>document.getElementById('quickPhotoInput').click());
+document.getElementById('quickPhotoInput').addEventListener('change', (e)=>{
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{ quickPhotoDataUrl=reader.result; document.getElementById('quickPhotoLabel').textContent='Foto lista ✓'; };
+  reader.readAsDataURL(file);
+});
+document.getElementById('quickSubmitBtn').addEventListener('click', ()=>{
+  const place = document.getElementById('quickPlace').value.trim();
+  const desc = document.getElementById('quickDesc').value.trim();
+  const date = document.getElementById('quickDate').value.trim() || new Date().toLocaleDateString('es-NI');
+  if(!place || !desc){ toast('Completa el lugar y la descripción del reporte'); return; }
+  const jitter = ()=> (Math.random()-0.5)*0.02;
+  const newReport = {
+    id:'r'+Date.now(), userId:currentUser.id, type:'Reporte de la comunidad', description:desc,
+    image: quickPhotoDataUrl || 'https://images.unsplash.com/photo-1605600659873-d808a13e4d2a?w=600&q=60',
+    lat: LEON[0]+jitter(), lng: LEON[1]+jitter(), date, status:'reportado',
+    location: place, commentsCount:0, likes:0
+  };
+  reports.unshift(newReport);
+  document.getElementById('quickPlace').value=''; document.getElementById('quickDesc').value=''; document.getElementById('quickDate').value='';
+  quickPhotoDataUrl=null; document.getElementById('quickPhotoLabel').textContent='Publicar/Reportar Imagen';
+  reportPage=1; renderReports(); refreshMarkers();
+  toast('¡Reporte publicado con éxito!');
+  addNotification('Tu reporte fue publicado en el mapa', 'estado');
+});
+
+function openReportForm(){
+  selectedReportLatLng = null; pendingPhotoDataUrl = null; selectedType='Acumulación de basura';
+  openModal(`
+    <div class="form-field"><label>Fotografía</label>
+      <div class="photo-btns"><div class="photo-btn" id="reportPhotoBtn">📷 Tomar / seleccionar foto</div></div>
+      <img id="reportPhotoPreview" class="photo-preview hidden">
+      <input type="file" id="reportPhotoInput" accept="image/*" capture="environment" class="hidden">
+    </div>
+    <div class="form-field"><label>Tipo de problema</label>
+      <div class="type-grid" id="typeGrid">
+        ${['Acumulación de basura','Vertedero improvisado','Contaminación de cauce','Tala ilegal','Aguas residuales','Otro'].map(t=>`<div class="type-opt ${t===selectedType?'sel':''}" data-type="${t}">${t}</div>`).join('')}
+      </div>
+    </div>
+    <div class="form-field"><label>Descripción</label><textarea id="reportDesc" placeholder="Describe el problema..."></textarea></div>
+    <div class="form-field"><label>Ubicación</label>
+      <div id="reportMiniMap" class="mini-map"></div>
+      <div class="gps-status" id="gpsStatus">Toca el mapa o usa tu ubicación GPS para fijar el punto.</div>
+      <div class="locate-btn" id="reportLocateBtn" style="position:static; display:inline-flex; margin-top:8px;">📍 Usar mi ubicación</div>
+    </div>
+    <button class="btn-submit" id="submitReportBtn">Enviar reporte</button>
+  `, 'Reportar problema');
+
+  document.getElementById('reportPhotoBtn').addEventListener('click', ()=>document.getElementById('reportPhotoInput').click());
+  document.getElementById('reportPhotoInput').addEventListener('change', (e)=>{
+    const file=e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{ pendingPhotoDataUrl = reader.result; const img=document.getElementById('reportPhotoPreview'); img.src=pendingPhotoDataUrl; img.classList.remove('hidden'); };
+    reader.readAsDataURL(file);
+  });
+  document.querySelectorAll('#typeGrid .type-opt').forEach(opt=>{
+    opt.addEventListener('click', ()=>{
+      selectedType = opt.dataset.type;
+      document.querySelectorAll('#typeGrid .type-opt').forEach(o=>o.classList.remove('sel'));
+      opt.classList.add('sel');
+    });
+  });
+
+  const miniMap = L.map('reportMiniMap').setView(LEON, 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OpenStreetMap'}).addTo(miniMap);
+  let miniMarker = null;
+  miniMap.on('click', (e)=>{
+    selectedReportLatLng = e.latlng;
+    if(miniMarker) miniMap.removeLayer(miniMarker);
+    miniMarker = L.marker(e.latlng).addTo(miniMap);
+    document.getElementById('gpsStatus').textContent = `Ubicación fijada: ${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
+  });
+  document.getElementById('reportLocateBtn').addEventListener('click', ()=>{
+    if(!navigator.geolocation){ toast('Tu navegador no soporta geolocalización'); return; }
+    document.getElementById('gpsStatus').textContent = 'Obteniendo tu ubicación...';
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const latlng = {lat:pos.coords.latitude, lng:pos.coords.longitude};
+      selectedReportLatLng = latlng;
+      miniMap.setView([latlng.lat, latlng.lng], 16);
+      if(miniMarker) miniMap.removeLayer(miniMarker);
+      miniMarker = L.marker([latlng.lat, latlng.lng]).addTo(miniMap);
+      document.getElementById('gpsStatus').textContent = `Tu ubicación actual: ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`;
+    }, err=>{
+      document.getElementById('gpsStatus').textContent = 'No se pudo obtener tu ubicación. Actívala en tu navegador o selecciona el punto manualmente en el mapa.';
+    }, {enableHighAccuracy:true, timeout:10000});
+  });
+  setTimeout(()=>miniMap.invalidateSize(), 200);
+
+  document.getElementById('submitReportBtn').addEventListener('click', ()=>{
+    const desc = document.getElementById('reportDesc').value.trim();
+    if(!desc){ toast('Escribe una descripción'); return; }
+    if(!selectedReportLatLng){ toast('Selecciona una ubicación en el mapa o usa tu GPS'); return; }
+    const newReport = {
+      id:'r'+Date.now(), userId:currentUser.id, type:selectedType, description:desc,
+      image: pendingPhotoDataUrl || 'https://images.unsplash.com/photo-1605600659873-d808a13e4d2a?w=600&q=60',
+      lat:selectedReportLatLng.lat, lng:selectedReportLatLng.lng,
+      date: new Date().toLocaleDateString('es-NI'), status:'reportado'
+    };
+    reports.unshift(newReport);
+    closeModal(); renderReports(); refreshMarkers();
+    toast('¡Reporte enviado con éxito!');
+    addNotification('Tu reporte fue publicado en el mapa', 'estado');
+  });
+}
+
+/* ===================== ACTIVITIES VIEW ===================== */
+function activityCardHTML(a){
+  const org = usersDB[a.organizerId];
+  const joined = a.participants.includes(currentUser.id);
+  return `<div class="activity-card" data-aid="${a.id}">
+    <img src="${a.image}">
+    <div class="activity-body">
+      <div class="activity-title">${a.name}</div>
+      <div class="activity-desc">${a.description}</div>
+      <div class="activity-meta">
+        📅 <b>${a.date}</b> · 🕐 <b>${a.time}</b><br>
+        📍 ${a.place}<br>
+        Organiza: <b>${org.name}</b>
+      </div>
+      <div class="activity-foot">
+        <span class="participants-txt">${a.participants.length} participantes</span>
+        <div class="btn-join ${joined?'joined':''}" style="padding:9px 18px;" data-actjoin="${a.id}">${joined?'UNIDO ✓':'UNIRSE'}</div>
+      </div>
+      <div class="mini-btn" style="margin-top:10px;" data-actmap="${a.id}">Ver en el mapa</div>
+    </div>
+  </div>`;
+}
+function renderActivities(){
+  const grid = document.getElementById('activitiesGrid');
+  const filtered = activities.filter(a=> matchesSearch(a.name)||matchesSearch(a.description)||matchesSearch(a.place));
+  grid.innerHTML = filtered.map(activityCardHTML).join('') || '<div class="card">No se encontraron actividades.</div>';
+  grid.querySelectorAll('[data-actjoin]').forEach(b=>b.addEventListener('click', ()=>{
+    const a = activities.find(a=>a.id===b.dataset.actjoin);
+    const idx = a.participants.indexOf(currentUser.id);
+    if(idx>=0){ a.participants.splice(idx,1); toast('Has salido de la actividad'); }
+    else { a.participants.push(currentUser.id); toast('¡Te uniste a la actividad!'); addNotification(`Te uniste a "${a.name}"`, 'actividad'); }
+    renderActivities();
+  }));
+  grid.querySelectorAll('[data-actmap]').forEach(b=>b.addEventListener('click', ()=>{
+    const a = activities.find(a=>a.id===b.dataset.actmap);
+    switchView('mapa');
+    setTimeout(()=>{ mapFullInstance.setView([a.lat, a.lng], 16); },150);
+  }));
+}
+document.getElementById('newActivityBtn').addEventListener('click', ()=>{
+  selectedReportLatLng = null;
+  openModal(`
+    <div class="form-field"><label>Nombre de la actividad</label><input type="text" id="actName" placeholder="Ej: Limpieza del parque"></div>
+    <div class="form-field"><label>Descripción</label><textarea id="actDesc"></textarea></div>
+    <div class="form-field"><label>Fecha</label><input type="text" id="actDate" placeholder="Ej: Sábado 22 de agosto 2026"></div>
+    <div class="form-field"><label>Hora</label><input type="text" id="actTime" placeholder="Ej: 9:00 AM"></div>
+    <div class="form-field"><label>Lugar</label><input type="text" id="actPlace" placeholder="Punto de encuentro"></div>
+    <div class="form-field"><label>Ubicación en el mapa</label><div id="actMiniMap" class="mini-map"></div></div>
+    <button class="btn-submit" id="submitActBtn">Crear actividad</button>
+  `, 'Nueva actividad');
+  const miniMap = L.map('actMiniMap').setView(LEON, 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OpenStreetMap'}).addTo(miniMap);
+  let marker=null;
+  miniMap.on('click', e=>{ selectedReportLatLng=e.latlng; if(marker) miniMap.removeLayer(marker); marker=L.marker(e.latlng).addTo(miniMap); });
+  setTimeout(()=>miniMap.invalidateSize(),200);
+  document.getElementById('submitActBtn').addEventListener('click', ()=>{
+    const name=document.getElementById('actName').value.trim();
+    if(!name || !selectedReportLatLng){ toast('Completa el nombre y selecciona un punto en el mapa'); return; }
+    activities.unshift({
+      id:'a'+Date.now(), name, description:document.getElementById('actDesc').value,
+      image:'https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?w=600&q=60',
+      date:document.getElementById('actDate').value||'Por definir', time:document.getElementById('actTime').value||'--',
+      place:document.getElementById('actPlace').value||'Por definir',
+      lat:selectedReportLatLng.lat, lng:selectedReportLatLng.lng,
+      organizerId:currentUser.id, participants:[currentUser.id]
+    });
+    closeModal(); renderActivities(); refreshMarkers();
+    toast('¡Actividad creada!');
+  });
+});
+
+/* ===================== STATS / STREAK ===================== */
+document.getElementById('statsBtn').addEventListener('click', ()=>{
+  const solved = reports.filter(r=>r.status==='solucionado').length;
+  const pending = reports.filter(r=>r.status==='reportado').length;
+  const process = reports.filter(r=>r.status==='proceso').length;
+  const totalComments = posts.reduce((s,p)=>s+countAllComments(p),0);
+  openModal(`
+    <div class="stats-grid">
+      <div class="stat-box"><div class="num">${reports.length}</div><div class="lbl">Total reportes</div></div>
+      <div class="stat-box"><div class="num">${solved}</div><div class="lbl">Solucionados</div></div>
+      <div class="stat-box"><div class="num">${pending}</div><div class="lbl">Pendientes</div></div>
+      <div class="stat-box"><div class="num">${process}</div><div class="lbl">En proceso</div></div>
+      <div class="stat-box"><div class="num">${activities.length}</div><div class="lbl">Actividades</div></div>
+      <div class="stat-box"><div class="num">${Object.keys(usersDB).length}</div><div class="lbl">Participantes</div></div>
+      <div class="stat-box"><div class="num">${posts.length}</div><div class="lbl">Publicaciones</div></div>
+      <div class="stat-box"><div class="num">${totalComments}</div><div class="lbl">Comentarios</div></div>
+    </div>
+  `,'Estadísticas de CHERRY');
+});
+document.getElementById('streakBtn').addEventListener('click', openStreakModal);
+document.getElementById('statsBtnMap').addEventListener('click', openStatsModal);
+document.getElementById('streakBtnMap').addEventListener('click', openStreakModal);
+function openStatsModal(){ document.getElementById('statsBtn').click(); }
+function openStreakModal(){
+  openModal(`<div style="text-align:center; padding:10px;">
+    <div style="font-size:56px;">🔥</div>
+    <div style="font-size:34px; font-weight:900; color:var(--green-dark); margin:8px 0;">${streakDays} días</div>
+    <p style="color:var(--text-soft); font-size:13.5px;">Días consecutivos participando en actividades y acciones ambientales. ¡Sigue así!</p>
+  </div>`, 'Tu racha');
+}
+
+/* ===================== MAP (Leaflet) ===================== */
+function statusIcon(status){
+  const color = statusColor(status);
+  return L.divIcon({
+    className:'', html:`<div style="width:26px;height:26px;border-radius:50% 50% 50% 0; background:${color}; transform:rotate(-45deg); border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.35);"></div>`,
+    iconSize:[26,26], iconAnchor:[13,26], popupAnchor:[0,-24]
+  });
+}
+function activityIcon(){
+  return L.divIcon({
+    className:'', html:`<div style="width:26px;height:26px;border-radius:50%; background:#8b5cf6; border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.35); display:flex;align-items:center;justify-content:center; font-size:13px;">⚡</div>`,
+    iconSize:[26,26], iconAnchor:[13,13], popupAnchor:[0,-14]
+  });
+}
+let homeMarkers=[], fullMarkers=[];
+
+function initMaps(){
+  if(typeof L === 'undefined'){
+    document.getElementById('mapHome').innerHTML = '<div style="padding:24px;font-size:13px;color:#a00;">No se pudo cargar la librería del mapa (Leaflet). Verifica tu conexión a internet y recarga la página.</div>';
+    const mf = document.getElementById('mapFull');
+    if(mf) mf.innerHTML = '<div style="padding:24px;font-size:13px;color:#a00;">No se pudo cargar la librería del mapa (Leaflet). Verifica tu conexión a internet y recarga la página.</div>';
+    return;
+  }
+  mapHomeInstance = L.map('mapHome', {zoomControl:false}).setView(LEON, 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OpenStreetMap'}).addTo(mapHomeInstance);
+
+  mapFullInstance = L.map('mapFull').setView(LEON, 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OpenStreetMap'}).addTo(mapFullInstance);
+
+  refreshMarkers();
+
+  document.getElementById('locateHomeBtn').addEventListener('click', ()=>locateUser(mapHomeInstance));
+  document.getElementById('locateFullBtn').addEventListener('click', ()=>locateUser(mapFullInstance, document.getElementById('mapFullStatus')));
+}
+
+function popupHTML(r){
+  const u = usersDB[r.userId];
+  return `<div class="popup-title">Problema ambiental</div>
+    Tipo: ${r.type}<br>
+    Descripción: ${r.description}<br>
+    Estado: <span class="popup-status" style="color:${statusColor(r.status)}">${statusLabel(r.status)}</span><br>
+    Reportado por: ${u.name}<br>
+    Fecha: ${r.date}
+    <br><br><a href="#" class="ver-reporte-link" data-rid="${r.id}" style="color:var(--green); font-weight:700;">Ver reporte</a>`;
+}
+function activityPopupHTML(a){
+  return `<div class="popup-title">${a.name}</div>
+    ${a.description}<br>
+    📅 ${a.date} · 🕐 ${a.time}<br>
+    📍 ${a.place}<br>
+    Participantes: ${a.participants.length}`;
+}
+
+function refreshMarkers(){
+  [mapHomeInstance, mapFullInstance].forEach((map, idx)=>{
+    const isFull = idx===1;
+    const arr = isFull ? fullMarkers : homeMarkers;
+    arr.forEach(m=>map.removeLayer(m));
+    arr.length=0;
+    reports.forEach(r=>{
+      const marker = L.marker([r.lat, r.lng], {icon:statusIcon(r.status)}).addTo(map);
+      if(isFull){
+        marker.on('click', ()=> showMapDetailCard(r));
+      } else {
+        marker.bindPopup(popupHTML(r));
+        marker.on('popupopen', ()=>{
+          setTimeout(()=>{
+            const link = document.querySelector('.ver-reporte-link');
+            if(link) link.addEventListener('click', (e)=>{ e.preventDefault(); switchView('reportes'); });
+          },50);
+        });
+      }
+      arr.push(marker);
+    });
+    activities.forEach(a=>{
+      const marker = L.marker([a.lat, a.lng], {icon:activityIcon()}).addTo(map);
+      marker.bindPopup(activityPopupHTML(a));
+      arr.push(marker);
+    });
+  });
+}
+function openReportPopupOnMap(map, r){ showMapDetailCard(r); }
+
+/* Tarjeta flotante de detalle del reporte sobre el mapa (como en la referencia) */
+function showMapDetailCard(r){
+  selectedMapReportId = r.id;
+  const u = usersDB[r.userId];
+  const card = document.getElementById('mapDetailCard');
+  card.innerHTML = `
+    <div class="mfr-close" id="mfrCloseBtn">&times;</div>
+    <div class="mfr-photo"><span class="mfr-chip" style="background:${statusColor(r.status)}">${r.status==='reportado'?'Reportados':r.status==='proceso'?'En proceso':'Solucionados'} !</span><img src="${r.image}"></div>
+    <div class="mfr-body">
+      <div class="mfr-title">${r.location||r.type}</div>
+      <div class="mfr-desc">${r.description}</div>
+      <div class="mfr-meta">
+        <span>🕐 ${r.date}</span>
+        <span>💬 ${r.commentsCount||0}</span>
+        <span>❤️ ${r.likes||0}</span>
+      </div>
+    </div>
+    <div class="mfr-side">
+      TIPO: ${r.type}<br>
+      REPORTADO POR: ${u.name}<br>
+      ESTADO: ${statusLabel(r.status)}<br>
+      <span class="ver-mapa" id="mfrVerReporte">VER EN LA SECCIÓN DE REPORTE 📋</span>
+    </div>
+  `;
+  card.classList.remove('hidden');
+  document.getElementById('mfrCloseBtn').addEventListener('click', ()=>card.classList.add('hidden'));
+  document.getElementById('mfrVerReporte').addEventListener('click', ()=>switchView('reportes'));
+}
+
+function locateUser(map, statusEl){
+  if(!navigator.geolocation){ toast('Tu navegador no soporta geolocalización'); return; }
+  toast('Obteniendo tu ubicación...');
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const {latitude, longitude} = pos.coords;
+    map.setView([latitude, longitude], 16);
+    const meIcon = L.divIcon({className:'', html:`<div style="width:20px;height:20px;border-radius:50%; background:#3fae29; border:3px solid #fff; box-shadow:0 0 0 6px rgba(63,174,41,0.3);"></div>`, iconSize:[20,20], iconAnchor:[10,10]});
+    L.marker([latitude, longitude], {icon:meIcon}).addTo(map).bindPopup('Tu ubicación actual').openPopup();
+    if(statusEl){ statusEl.style.display='block'; statusEl.textContent = `Tu ubicación actual: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`; }
+    toast('Ubicación encontrada');
+  }, err=>{
+    toast('No se pudo acceder a tu ubicación. Revisa los permisos del navegador.');
+  }, {enableHighAccuracy:true, timeout:10000});
+}
+
+/* ===================== INITIAL RENDER ===================== */
+renderPosts();
+renderComments(currentOpenPostId);
+renderReports();
+renderActivities();
+renderCommunity();
+document.getElementById('streakNum').textContent = streakDays;
+document.getElementById('streakNumMap').textContent = streakDays;
+initMaps();
+</script>
+</body>
+</html>
