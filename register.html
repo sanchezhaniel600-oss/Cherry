@@ -84,32 +84,20 @@
   </div>
 
   <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-    import { getAuth, createUserWithEmailAndPassword, updateProfile } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+    import { auth, registerUserWithProfile } from './firebase.js';
 
-    const firebaseConfig = {
-      apiKey: 'AIzaSyCBwHrDgc6ffRx8ccpYsfz7XNAEOyuehAQ',
-      authDomain: 'cherry-9886f.firebaseapp.com',
-      projectId: 'cherry-9886f',
-      storageBucket: 'cherry-9886f.firebasestorage.app',
-      messagingSenderId: '294176754889',
-      appId: '1:294176754889:web:e9580434f97eef3d56d118',
-      measurementId: 'G-N0PK4K6L9Q'
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
     const form = document.getElementById('registerForm');
 
     form?.addEventListener('submit', async (event) => {
       event.preventDefault();
 
       const name = document.getElementById('name')?.value.trim();
+      const lastName = document.getElementById('lastName')?.value.trim();
       const email = document.getElementById('email')?.value.trim();
       const password = document.getElementById('password')?.value.trim();
       const confirmPassword = document.getElementById('confirmPassword')?.value.trim();
 
-      if (!name || !email || !password || !confirmPassword) {
+      if (!name || !lastName || !email || !password || !confirmPassword) {
         alert('Debes completar todos los campos.');
         return;
       }
@@ -125,15 +113,18 @@
       }
 
       try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-
-        await updateProfile(user, { displayName: name });
+        const user = await registerUserWithProfile({
+          name,
+          lastName,
+          email,
+          password,
+        });
 
         sessionStorage.setItem('cherrySession', 'logged-in');
-        sessionStorage.setItem('cherryUserName', name);
+        sessionStorage.setItem('cherryUserName', `${name} ${lastName}`.trim());
         sessionStorage.setItem('cherryUserEmail', user.email || '');
 
+        alert('Cuenta creada correctamente.');
         window.location.href = './Index/index.html';
       } catch (error) {
         const message = error && error.message ? error.message : 'No se pudo crear la cuenta.';
