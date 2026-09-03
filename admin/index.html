@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CHERRY | Administración</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div class="admin-shell">
+    <aside class="sidebar">
+      <a class="brand" href="../Index/index.html" aria-label="Volver a CHERRY">
+        <span class="brand-mark">C</span>
+        <span><strong>CHERRY</strong><small>Panel de control</small></span>
+      </a>
+      <div class="sidebar-label">Gestión</div>
+      <nav class="admin-nav" aria-label="Navegación administrativa">
+        <button class="nav-item active" data-section="overview"><span>▦</span> Resumen</button>
+        <button class="nav-item" data-section="posts"><span>▤</span> Publicaciones</button>
+        <button class="nav-item" data-section="users"><span>♙</span> Usuarios</button>
+      </nav>
+      <div class="sidebar-footer">
+        <span class="status-dot"></span>
+        <div><strong>Modo administrador</strong><small>Sesión local activa</small></div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Centro de moderación</p>
+          <h1 id="pageTitle">Resumen general</h1>
+        </div>
+        <a class="back-link" href="../Index/index.html">← Volver al sitio</a>
+      </header>
+
+      <section class="section active" id="section-overview">
+        <div class="welcome-band">
+          <div><span class="kicker">CHERRY / ADMIN</span><h2>Todo bajo control.</h2><p>Supervisa la conversación y cuida la comunidad desde un solo lugar.</p></div>
+          <div class="shield">✦</div>
+        </div>
+        <div class="stat-grid" id="statGrid"></div>
+        <div class="overview-grid">
+          <div class="panel"><div class="panel-heading"><div><span class="kicker">Actividad reciente</span><h3>Moderación pendiente</h3></div><button class="text-button" data-section-link="posts">Ver publicaciones</button></div><div id="recentPosts"></div></div>
+          <div class="panel accent-panel"><span class="kicker">Estado del sistema</span><h3>Comunidad protegida</h3><p>Las acciones de moderación se sincronizan automáticamente con la interfaz pública en este navegador.</p><div class="health-line"><span></span><strong>Operativo</strong><small>Última revisión: ahora</small></div></div>
+        </div>
+      </section>
+
+      <section class="section" id="section-posts">
+        <div class="section-intro"><div><span class="kicker">Contenido</span><h2>Publicaciones</h2><p>Retira contenido que incumpla las normas de la comunidad.</p></div><span class="count-badge" id="postCount"></span></div>
+        <div class="toolbar"><label class="search"><span>⌕</span><input id="postSearch" type="search" placeholder="Buscar publicación o autor"></label><select id="postFilter" aria-label="Filtrar publicaciones"><option value="all">Todas</option><option value="visible">Visibles</option><option value="deleted">Eliminadas</option></select></div>
+        <div class="list" id="postsList"></div>
+      </section>
+
+      <section class="section" id="section-users">
+        <div class="section-intro"><div><span class="kicker">Comunidad</span><h2>Usuarios</h2><p>Suspende temporalmente o bloquea cuentas de forma permanente.</p></div><span class="count-badge" id="userCount"></span></div>
+        <div class="toolbar"><label class="search"><span>⌕</span><input id="userSearch" type="search" placeholder="Buscar por nombre o correo"></label><select id="userFilter" aria-label="Filtrar usuarios"><option value="all">Todos los estados</option><option value="active">Activos</option><option value="suspended">Suspendidos</option><option value="banned">Baneados</option></select></div>
+        <div class="list" id="usersList"></div>
+      </section>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="admin.js"></script>
+</body>
+</html>
