@@ -11,15 +11,13 @@ import {
   serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-export const firebaseConfig = {
-  apiKey: 'AIzaSyCBwHrDgc6ffRx8ccpYsfz7XNAEOyuehAQ',
-  authDomain: 'cherry-9886f.firebaseapp.com',
-  projectId: 'cherry-9886f',
-  storageBucket: 'cherry-9886f.firebasestorage.app',
-  messagingSenderId: '294176754889',
-  appId: '1:294176754889:web:e9580434f97eef3d56d118',
-  measurementId: 'G-N0PK4K6L9Q',
-};
+export const firebaseConfig = globalThis.CHERRY_FIREBASE_CONFIG;
+
+if (!firebaseConfig?.apiKey) {
+  throw new Error(
+    'Falta CHERRY_FIREBASE_CONFIG. Carga firebase-config.js antes de iniciar la aplicacion.'
+  );
+}
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);

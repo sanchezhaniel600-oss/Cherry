@@ -190,22 +190,10 @@
     </div>
   </div>
 
+  <script src="../firebase-config.js"></script>
   <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-    import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-
-    const firebaseConfig = {
-      apiKey: 'AIzaSyCBwHrDgc6ffRx8ccpYsfz7XNAEOyuehAQ',
-      authDomain: 'cherry-9886f.firebaseapp.com',
-      projectId: 'cherry-9886f',
-      storageBucket: 'cherry-9886f.firebasestorage.app',
-      messagingSenderId: '294176754889',
-      appId: '1:294176754889:web:e9580434f97eef3d56d118',
-      measurementId: 'G-N0PK4K6L9Q'
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
+    import { auth } from '../firebase.js';
+    import { signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
     const form = document.getElementById('loginForm');
     const guestLoginBtn = document.getElementById('guestLoginBtn');
     const indexUrl = '../Index/index.html';
